@@ -147,6 +147,13 @@ addition to wall time and call counts, each run records Ollama prompt and output
 token counts. Direct-agent mode remains allowed to fail when the selected model
 cannot produce a valid tool decision.
 
+After both arms have run, the latest matched-model comparison also displays
+paired A/B bars, raw values, and normalized A:B ratios for workflow completion,
+category correctness, end-to-end/model/non-model time, prompt/output/total
+tokens, and model/MCP/repair calls. For lower-is-better metrics, `A:B 2.4:1`
+means the direct baseline consumed 2.4 times the resource used by the compiled
+workflow.
+
 For reproducibility, deterministic category and location behavior is checked
 against [`tests/fixtures/civic-issues.json`](tests/fixtures/civic-issues.json).
 Live report contents are not used as fixed assertions because Boston's public

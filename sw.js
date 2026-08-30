@@ -1,6 +1,6 @@
 // Service worker: cache the static app shell only. Cross-origin requests to
 // local Ollama and the public MCP server deliberately stay live.
-const CACHE_NAME = 'sundai-311-purpose-compiler-v14-ollama'
+const CACHE_NAME = 'sundai-311-purpose-compiler-v15-ab-dashboard'
 const SHELL = [
   './',
   './index.html',

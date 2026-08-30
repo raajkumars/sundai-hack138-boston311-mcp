@@ -182,10 +182,36 @@
     background: rgba(124, 140, 255, .08); border: 1px solid rgba(124, 140, 255, .22);
     border-radius: 9px; color: var(--text-1); font-size: 12.5px; margin: 12px 0 16px; padding: 10px 12px;
   }
+  .ab-dashboard { margin: 14px 0 18px; }
+  .ab-dashboard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .ab-dashboard-head h2 { margin: 0; }
+  .ab-legend { color: var(--text-2); display: flex; flex-wrap: wrap; gap: 10px; font-size: 10.5px; }
+  .ab-legend span { align-items: center; display: inline-flex; gap: 5px; }
+  .ab-legend i { background: #68708d; border-radius: 99px; display: inline-block; height: 6px; width: 18px; }
+  .ab-legend i.b { background: linear-gradient(90deg, var(--accent-0), #a78bfa); }
+  .ab-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ab-metric { background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 10px; padding: 11px 12px; }
+  .ab-metric-top { align-items: start; display: grid; gap: 8px; grid-template-columns: 1fr auto; }
+  .ab-metric-name { color: var(--text-0); display: block; font-size: 12px; font-weight: 700; }
+  .ab-metric-note { color: var(--text-2); display: block; font-size: 9.5px; margin-top: 2px; }
+  .ab-ratio { background: rgba(124, 140, 255, .09); border: 1px solid rgba(124, 140, 255, .3); border-radius: 6px; color: #c4b5fd; font: 700 10.5px/1 'SF Mono', ui-monospace, monospace; padding: 5px 6px; white-space: nowrap; }
+  .ab-ratio.favorable { border-color: rgba(74, 222, 128, .35); color: var(--ok); }
+  .ab-series-list { display: grid; gap: 5px; margin-top: 9px; }
+  .ab-series { align-items: center; display: grid; gap: 7px; grid-template-columns: 13px minmax(0, 1fr) minmax(48px, auto); }
+  .ab-series-label { color: var(--text-2); font: 700 9px/1 'SF Mono', ui-monospace, monospace; }
+  .ab-series.b .ab-series-label { color: #a78bfa; }
+  .ab-bar-track { background: var(--bg-2); border-radius: 99px; height: 7px; overflow: hidden; }
+  .ab-bar { background: #68708d; border-radius: inherit; display: block; height: 100%; min-width: 0; }
+  .ab-series.b .ab-bar { background: linear-gradient(90deg, var(--accent-0), #a78bfa); }
+  .ab-series-value { color: var(--text-1); font: 700 10px/1 'SF Mono', ui-monospace, monospace; text-align: right; }
+  .ab-metric-reading { color: var(--text-2); font-size: 9.5px; line-height: 1.3; margin: 7px 0 0; }
+  .ab-dashboard-empty { background: var(--bg-0); border: 1px dashed var(--border); border-radius: 10px; color: var(--text-2); font-size: 12px; padding: 14px; }
+  .ab-ratio-help { color: var(--text-2); font-size: 10px; line-height: 1.4; margin: 9px 2px 0; }
   @media (max-width: 600px) {
     .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .strategy-grid, .comparison-grid { grid-template-columns: 1fr; }
+    .strategy-grid, .comparison-grid, .ab-metrics { grid-template-columns: 1fr; }
     .controlled-variables { grid-template-columns: 1fr; }
+    .ab-dashboard-head { align-items: flex-start; flex-direction: column; }
   }
   #output { animation: fadeIn 0.45s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -280,6 +306,7 @@
         </div>
       </div>
       <div id="comparisonReading" class="comparison-reading">Run both arms to reveal the latest head-to-head outcome.</div>
+      <div id="comparisonMetrics" class="ab-dashboard" aria-live="polite"></div>
       <h2>Recent measured runs</h2>
       <div style="overflow-x:auto">
         <table class="history">
@@ -639,11 +666,94 @@ Output: rats behind the dumpster on Oak St`
         </div>`
     }
 
+    function formatComparisonValue(value, format) {
+      if (format === 'boolean') return value ? 'yes' : 'no'
+      if (format === 'duration') return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 1 : 2)} s` : `${Math.round(value)} ms`
+      if (format === 'decimal') return Number(value).toFixed(2).replace(/\.00$/, '')
+      return Math.round(value).toLocaleString()
+    }
+
+    function comparisonRatio(a, b, format) {
+      if (format === 'boolean') {
+        if (a === b) return a ? 'both passed' : 'both missed'
+        return b ? 'B leads' : 'A leads'
+      }
+      if (b === 0) return a === 0 ? 'A:B 0:0' : 'A:B ∞:1'
+      const ratio = a / b
+      return `A:B ${ratio.toFixed(ratio >= 10 ? 1 : 2).replace(/\.?0+$/, '')}:1`
+    }
+
+    function comparisonReading(metric, a, b) {
+      if (metric.format === 'boolean') {
+        if (a === b) return a ? 'Both arms achieved this outcome.' : 'Neither arm achieved this outcome.'
+        return `${b ? 'B' : 'A'} achieved this outcome; ${b ? 'A' : 'B'} did not.`
+      }
+      if (a === b) return a === 0 ? 'Neither arm used this resource.' : 'No measured difference.'
+      if (b === 0) return 'B eliminated this measured cost.'
+      if (a === 0) return 'Only B incurred this measured cost.'
+      const difference = Math.abs((b - a) / a * 100).toFixed(0)
+      return `B is ${difference}% ${b < a ? 'lower' : 'higher'} than A${metric.lowerIsBetter && b < a ? ' · favorable' : ''}.`
+    }
+
+    function comparisonMetricCard(metric) {
+      const a = Number(metric.a) || 0
+      const b = Number(metric.b) || 0
+      const maximum = Math.max(a, b, Number.EPSILON)
+      const aWidth = Math.max(a === 0 ? 0 : 3, a / maximum * 100)
+      const bWidth = Math.max(b === 0 ? 0 : 3, b / maximum * 100)
+      const favorable = metric.format === 'boolean' ? b && !a : metric.lowerIsBetter && b < a
+      return `
+        <article class="ab-metric">
+          <div class="ab-metric-top">
+            <div><span class="ab-metric-name">${metric.label}</span><span class="ab-metric-note">${metric.note}</span></div>
+            <span class="ab-ratio${favorable ? ' favorable' : ''}">${comparisonRatio(a, b, metric.format)}</span>
+          </div>
+          <div class="ab-series-list" aria-label="A ${formatComparisonValue(a, metric.format)}; B ${formatComparisonValue(b, metric.format)}">
+            <div class="ab-series a"><span class="ab-series-label">A</span><span class="ab-bar-track"><span class="ab-bar" style="width:${aWidth}%"></span></span><span class="ab-series-value">${formatComparisonValue(a, metric.format)}</span></div>
+            <div class="ab-series b"><span class="ab-series-label">B</span><span class="ab-bar-track"><span class="ab-bar" style="width:${bWidth}%"></span></span><span class="ab-series-value">${formatComparisonValue(b, metric.format)}</span></div>
+          </div>
+          <p class="ab-metric-reading">${comparisonReading(metric, a, b)}</p>
+        </article>`
+    }
+
+    function renderComparisonMetrics(direct, compiled) {
+      const dashboard = document.getElementById('comparisonMetrics')
+      if (!direct || !compiled) {
+        dashboard.innerHTML = `
+          <div class="ab-dashboard-head"><h2>Metric comparison</h2></div>
+          <div class="ab-dashboard-empty">Run both arms with the same report to display A:B ratios and comparative bars.</div>`
+        return
+      }
+      const directTokens = (Number(direct.promptTokens) || 0) + (Number(direct.outputTokens) || 0)
+      const compiledTokens = (Number(compiled.promptTokens) || 0) + (Number(compiled.outputTokens) || 0)
+      const metrics = [
+        { label: 'Workflow completion', note: 'quality · higher is better', a: direct.status === 'passed', b: compiled.status === 'passed', format: 'boolean' },
+        { label: 'Category correctness', note: 'quality · higher is better', a: direct.categoryCorrect === true, b: compiled.categoryCorrect === true, format: 'boolean' },
+        { label: 'End-to-end time', note: 'wall time · lower is better', a: direct.durationMs, b: compiled.durationMs, format: 'duration', lowerIsBetter: true },
+        { label: 'Model inference time', note: 'Ollama work · lower is better', a: direct.modelDurationMs, b: compiled.modelDurationMs, format: 'duration', lowerIsBetter: true },
+        { label: 'Non-model time', note: 'MCP + client overhead · lower is better', a: Math.max(0, direct.durationMs - direct.modelDurationMs), b: Math.max(0, compiled.durationMs - compiled.modelDurationMs), format: 'duration', lowerIsBetter: true },
+        { label: 'Total tokens', note: 'prompt + output · lower is better', a: directTokens, b: compiledTokens, format: 'number', lowerIsBetter: true },
+        { label: 'Prompt tokens', note: 'input context · lower is better', a: direct.promptTokens, b: compiled.promptTokens, format: 'number', lowerIsBetter: true },
+        { label: 'Output tokens', note: 'generated tokens · lower is better', a: direct.outputTokens, b: compiled.outputTokens, format: 'number', lowerIsBetter: true },
+        { label: 'Model calls', note: 'per run · lower is better', a: direct.modelCalls, b: compiled.modelCalls, format: 'decimal', lowerIsBetter: true },
+        { label: 'MCP calls', note: 'per run · task-dependent', a: direct.mcpCalls, b: compiled.mcpCalls, format: 'decimal' },
+        { label: 'Repair calls', note: 'recovery work · lower is better', a: direct.repairCalls, b: compiled.repairCalls, format: 'decimal', lowerIsBetter: true }
+      ]
+      dashboard.innerHTML = `
+        <div class="ab-dashboard-head">
+          <h2>Latest head-to-head metrics</h2>
+          <div class="ab-legend"><span><i></i>A · direct</span><span><i class="b"></i>B · purpose compiled</span></div>
+        </div>
+        <div class="ab-metrics">${metrics.map(comparisonMetricCard).join('')}</div>
+        <p class="ab-ratio-help"><strong>A:B ratios are normalized to B = 1.</strong> For lower-is-better metrics, A:B 2.4:1 means the direct baseline consumed 2.4× the resource used by the compiled workflow. Bars are scaled within each metric.</p>`
+    }
+
     function renderComparison(runs) {
       const direct = runs.find((run) => run.strategy === 'direct')
       const compiled = runs.find((run) => run.strategy === 'compiled')
       renderOutcome('directOutcome', direct)
       renderOutcome('compiledOutcome', compiled)
+      renderComparisonMetrics(direct, compiled)
 
       const reading = document.getElementById('comparisonReading')
       if (!direct || !compiled) {
