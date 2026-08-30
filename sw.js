@@ -3,7 +3,7 @@
 // the PWA) and GET-only caching below already skips those — the 311 lookup
 // stays live, which is the whole point: only inference is offline-capable,
 // the MCP call is deliberately real and current.
-const CACHE_NAME = 'sundai-311-purpose-compiler-v2'
+const CACHE_NAME = 'sundai-311-purpose-compiler-v3'
 const SHELL = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const SHELL = [
   './direct-agent.js',
   './run-metrics.js',
   './civic-normalizer.js',
+  './model-backend.js',
   './purpose-packs/boston-311-related-reports.json',
 ]
 

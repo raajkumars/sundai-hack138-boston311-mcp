@@ -5,6 +5,7 @@ import test from 'node:test'
 import { classifyCategory, locationOf } from '../civic-normalizer.js'
 import { compilePurposePack, executePlan, PurposeCompilerError } from '../purpose-compiler.js'
 import { parseDirectDecision, runDirectAgent } from '../direct-agent.js'
+import { selectInferenceDevice } from '../model-backend.js'
 
 const root = new URL('../', import.meta.url)
 const pack = JSON.parse(await readFile(new URL('purpose-packs/boston-311-related-reports.json', root)))
@@ -86,4 +87,12 @@ test('deterministic civic routing passes the benchmark fixtures', async () => {
     assert.equal(classifyCategory(fixture.input), fixture.category, fixture.input)
     assert.equal(locationOf(fixture.input), fixture.location, fixture.input)
   }
+})
+
+test('selects WASM before pipeline creation when WebGPU is unavailable', async () => {
+  assert.equal(await selectInferenceDevice(undefined), 'wasm')
+  assert.equal(await selectInferenceDevice({ requestAdapter: async () => null }), 'wasm')
+  assert.equal(await selectInferenceDevice({ requestAdapter: async () => { throw new Error('adapter unavailable') } }), 'wasm')
+  assert.equal(await selectInferenceDevice({ requestAdapter: async () => ({}) }), 'webgpu')
+  assert.equal(await selectInferenceDevice(undefined, 'webgpu'), 'webgpu')
 })

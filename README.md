@@ -110,6 +110,10 @@ Open <http://localhost:8899>. The first page load reads the model from the local
 static server and caches the application shell. Allow microphone access only if
 you want speech input.
 
+The app probes for a usable WebGPU adapter before creating the model pipeline
+and selects local WASM inference when no adapter is available. To force the
+portable path, open <http://localhost:8899/?backend=wasm>.
+
 The PWA defaults to `http://localhost:8311/mcp`. A deployment can set
 `window.MCP_SERVER_URL` before the module script executes.
 

@@ -210,6 +210,7 @@
     import { runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
     import { parseExtraction } from './civic-normalizer.js'
+    import { selectInferenceDevice } from './model-backend.js'
 
     // Weights are vendored in ./models — no Hugging Face Hub call, ever.
     env.allowRemoteModels = false
@@ -282,21 +283,20 @@
 
     async function load() {
       try {
-        try {
-          generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'webgpu', progress_callback: onProgress })
-        } catch (webgpuError) {
-          console.warn('WebGPU model load failed, trying WASM:', webgpuError)
+        const requestedBackend = new URLSearchParams(window.location.search).get('backend') || ''
+        const device = await selectInferenceDevice(navigator.gpu, requestedBackend)
+        if (device === 'wasm') {
           statusEl.textContent = 'WebGPU unavailable, falling back to WASM (slower, still local)...'
-          generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'wasm', progress_callback: onProgress })
         }
+        generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device, progress_callback: onProgress })
         progressEl.style.width = '100%'
         progressTrack.classList.add('done')
-        statusEl.textContent = `Loaded ${MODEL} (180MB, one-time) — extraction runs with 0 network calls from here.`
+        statusEl.textContent = `Loaded ${MODEL} with ${device.toUpperCase()} (180MB, one-time) — extraction runs with 0 network calls from here.`
         input.disabled = false
         go.disabled = false
       } catch (error) {
         console.error('Local model failed to load:', error)
-        statusEl.textContent = `Local model failed to load: ${error.message}`
+        statusEl.textContent = `Local model failed to load: ${error.message}. Try adding ?backend=wasm to the URL.`
       }
     }
     mcpReady = discoverAndCompile()
