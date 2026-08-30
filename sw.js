@@ -4,19 +4,28 @@
 // CACHE_NAME, so a returning browser kept serving the FIRST version it
 // ever loaded, forever, no matter how many times the server was fixed.
 //
-// - APP SHELL (index.html, mcp-client.js, manifest.json) — code that
-//   changes on every deploy: NETWORK-FIRST, falling back to cache only if
-//   the network fetch fails (offline resilience), so a returning visitor
-//   always gets the current build when online.
+// - APP SHELL (every local .js/.json module + index.html/manifest.json) —
+//   code that changes on every deploy: NETWORK-FIRST, falling back to
+//   cache only if the network fetch fails (offline resilience), so a
+//   returning visitor always gets the current build when online.
 // - IMMUTABLE (vendor/transformers.min.js, model weights) — large,
 //   version-pinned, never changes without a code change to the URL itself:
 //   CACHE-FIRST, so the 180MB model isn't re-downloaded every visit.
 //
-// CACHE_NAME is bumped (v1 -> v2) specifically to evict every previously
-// -cached shell entry for anyone (Ted, @raaj, a judge) who visited earlier
-// today under the old cache-first-everything version.
-const CACHE_NAME = 'sundai-311-mcp-v2'
-const SHELL = ['index.html', 'manifest.json', 'mcp-client.js']
+// CACHE_NAME is bumped on every shell change to evict previously-cached
+// entries for anyone (Ted, @raaj, a judge) who visited an earlier build.
+const CACHE_NAME = 'sundai-311-mcp-v3'
+const SHELL = [
+  'index.html',
+  'manifest.json',
+  'mcp-client.js',
+  'ollama-client.js',
+  'purpose-compiler.js',
+  'direct-agent.js',
+  'run-metrics.js',
+  'civic-normalizer.js',
+  'purpose-packs/boston-311-related-reports.json',
+]
 const IMMUTABLE = ['./vendor/transformers.min.js']
 
 self.addEventListener('install', (event) => {
@@ -36,7 +45,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   const url = new URL(event.request.url)
-  if (url.origin !== self.location.origin) return // never cache the MCP server or any cross-origin call
+  if (url.origin !== self.location.origin) return // never cache Ollama, the MCP server, or any cross-origin call
 
   const isShell = url.pathname.endsWith('/') || SHELL.some((f) => url.pathname.endsWith('/' + f))
 

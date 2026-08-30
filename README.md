@@ -1,126 +1,195 @@
-# Sundai Hack 138 — Project 2 (2026-08-30)
+# MCP Purpose Compiler — Boston 311 reference application
 
-Throwaway demo scaffold. Scratch only — not a qwickapps product repo.
+Sundai Hack 138: **Small Models, Big Applications**.
 
-**Theme:** "Small Models, Big Applications." **@raaj + Ted (tedschwml@gmail.com).**
+This project compares how the same local Ollama model performs on a real
+MCP-backed task with and without purpose-compiled orchestration. The model is
+selected in the UI from the models installed in the visitor's local Ollama
+instance.
 
-## What this is
-
-A PWA with a small local model (SmolLM2-135M-Instruct, transformers.js,
-WebGPU/WASM) that paraphrases a typed or spoken civic issue report; code
-deterministically pulls out a location and a category from the same text,
-then makes a **real MCP tool call** (streamable HTTP, JSON-RPC 2.0) to a
-small MCP server that looks it up against Boston's live Open311 API. The
-model does language, deterministic code does protocol and the structured
-fields — it never emits a tool call itself. (The model was originally
-Qwen2.5-0.5B-Instruct — swapped down for cold-load time, see "Model
-history" below; multi-field model output also proved unreliable at this
-size, see "Extraction design".)
+The application is read-only. It never files Boston 311 requests. A hosted PWA
+shell is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>, but
+inference still requires Ollama on the visitor's machine and permission for the
+page origin to access it. Running the PWA locally is the simplest demo setup.
 
 ## Live URLs
 
-- PWA: https://sundai-hack138-2-gw.route.qwickforge.com/
-- MCP server (streamable HTTP): https://boston311-mcp-gw.route.qwickforge.com/mcp
+- PWA: <https://sundai-hack138-2-gw.route.qwickforge.com/>
+- MCP server (streamable HTTP):
+  <https://boston311-mcp-gw.route.qwickforge.com/mcp>
   — `GET .../health` for a liveness check without speaking MCP.
 
-The live PWA has `window.MCP_SERVER_URL` baked in at deploy time, pointing
-at the live MCP server above — deploy-time injection, source stays on
-`localhost` for local dev (see "Local run").
+The source and hosted PWA use the public read-only MCP deployment by default.
+No local MCP process is required.
 
-## Layout
+## What it demonstrates
 
-- `index.html`, `manifest.json`, `sw.js`, `mcp-client.js`, `vendor/`,
-  `models/`, `icons/` — the PWA (static, no build step)
-- `mcp-server/` — the MCP server (Node/Express, `npm install && npm start`,
-  listens on `PORT` env var, default 8311)
+The browser discovers installed models through the local Ollama API and sends
+inference requests only to that local service. It connects separately to an
+existing MCP server that exposes two tools backed by Boston's live Open311 API:
 
-`vendor/` and `models/` are gitignored (180MB+ of binary weights/library) —
-**a fresh clone will be missing both**. Run "Regenerating vendored assets"
-below first, or `index.html` will fail to load with a 404 on those paths.
+- `lookup_service({ category })`
+- `query_recent({ category, location? })`
 
-## Regenerating vendored assets (required after a fresh clone)
+The MCP server is unchanged by the Purpose Compiler. All new orchestration is
+client-side and uses only standard `initialize`, `tools/list`, and `tools/call`
+requests.
+
+Two strategies are available in the UI:
+
+1. **Purpose compiled** — a local Purpose Pack declares the validated workflow.
+   The selected model performs one narrow language task; deterministic code owns
+   category rules, MCP routing, argument validation, call limits, and result
+   handling.
+2. **Direct MCP agent** — the same selected model receives raw `tools/list`
+   descriptions and chooses tool calls itself. Ollama-native tool calls are used
+   when the model supplies them. Text output parsing is the first fallback; if
+   that is still unusable, the same model retries against a JSON schema whose
+   tool enum comes from `tools/list`. Used non-terminal tools are removed from
+   the following decision to prevent loops. Tool and argument choices remain
+   model outputs, and repair calls are included in the metrics. This is the
+   comparison baseline.
+
+Every run records wall time, model time, model calls, MCP calls, status, and
+location fallback behavior in browser-local storage. Complaint text is not
+stored.
+
+## Architecture
+
+```text
+Existing MCP server (unchanged)
+  initialize + tools/list + tools/call
+                    |
+                    v
+       Client-side Purpose Pack
+                    |
+                    v
+       Workflow compiler + validator
+                    |
+          +---------+----------+
+          |                    |
+          v                    v
+ local Ollama model     deterministic MCP calls
+          |                    |
+          +---------+----------+
+                    v
+          live Boston 311 results
+```
+
+The portable policy is
+[`purpose-packs/boston-311-related-reports.json`](purpose-packs/boston-311-related-reports.json).
+The generic compiler is [`purpose-compiler.js`](purpose-compiler.js).
+
+## Prerequisites
+
+- Node.js 18 or newer
+- Python 3 (used only as a no-build static file server)
+- A running local [Ollama](https://ollama.com/) service
+- At least one model installed in Ollama
+- A browser allowed to access `http://127.0.0.1:11434`
+
+## First-time setup
+
+Install or choose at least one local model. For example:
 
 ```bash
-BASE="https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main"
-DEST="models/onnx-community/SmolLM2-135M-Instruct-ONNX"
-mkdir -p "$DEST/onnx"
-for f in config.json generation_config.json merges.txt tokenizer.json tokenizer_config.json vocab.json special_tokens_map.json; do
-  curl -sSL "$BASE/$f" -o "$DEST/$f"
-done
-curl -sSL "$BASE/onnx/model_q4.onnx" -o "$DEST/onnx/model_q4.onnx"   # ~180MB
-
-mkdir -p vendor
-curl -sSL "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2" -o vendor/transformers.min.js
+ollama pull llama3.1:8b
 ```
 
-Verified 2026-08-30: cloned fresh with no local git credentials (same
-situation as any collaborator), ran this recipe verbatim, all 9 files
-downloaded 200.
+The app defaults to `llama3.1:8b` when it is installed; otherwise it selects the
+first model returned by Ollama. The dropdown exposes every model returned by
+`GET /api/tags`. On selection, the app preloads that model and keeps it resident
+for ten minutes so the first experiment arm does not pay a cold-load penalty.
 
-## Local run
+## Start locally
 
+The PWA uses the public read-only MCP endpoint by default; no local MCP server
+is required:
+
+```text
+https://boston311-mcp-gw.route.qwickforge.com/mcp
 ```
-cd mcp-server && npm install && npm start   # :8311
-python3 -m http.server 8899                 # PWA, separate terminal
+
+Make sure Ollama is running, then start the static PWA:
+
+```bash
+cd /workspace/boston-311-hack
+npm run serve
 ```
 
-Open http://localhost:8899 — the PWA's `MCP_SERVER_URL` defaults to
-`http://localhost:8311/mcp`.
+Open <http://localhost:8899>. The model dropdown is populated from
+<http://127.0.0.1:11434/api/tags>. Allow microphone access only if you want
+speech input.
 
-**Don't want to run the MCP server locally?** Point the local PWA at the
-live one instead — before `index.html` loads, in the browser console or a
-tiny inline script: `window.MCP_SERVER_URL = 'https://boston311-mcp-gw.route.qwickforge.com/mcp'`.
-CORS on the live server is open (`*`), so this works from `localhost` too.
+The selected model can also be requested with a query parameter, for example
+<http://localhost:8899/?model=llama3.2%3A1b>. A deployment can set
+`window.OLLAMA_SERVER_URL` before the module script executes to use a different
+local Ollama address.
 
-## Extraction design
+Ollama permits localhost browser origins by default. A non-local hosted PWA may
+require adding its exact origin to `OLLAMA_ORIGINS` and restarting Ollama.
 
-The model outputs one thing: a short plain-sentence paraphrase of the
-complaint. Earlier attempts had it also emit JSON, then labeled
-LOCATION/CATEGORY/DESCRIPTION lines — both drifted between runs at this
-model size (copying a few-shot example's text instead of the real input,
-occasionally fabricating a detail). Location is pulled from the raw input
-with a preposition heuristic (`on/at/near <place>`); category is a
-deterministic keyword classifier — see `CATEGORY_RULES` in `index.html`.
-Verified across several differently-phrased inputs, not just the
-rehearsed line.
+The public deployment permits browser CORS and supports MCP protocol version
+`2025-06-18`. A different deployment can still set `window.MCP_SERVER_URL`
+before the module script executes.
 
-## Model history
+## Compare the strategies
 
-Qwen2.5-0.5B-Instruct (763MB) -> hit a real cold-load wall through the
-gateway (~3.5min at measured throughput) — same class of problem project 1
-hit first. Swapped to project 1's already-validated fix,
-SmolLM2-135M-Instruct-ONNX (180MB, ~180MB/3.7MBps ≈ 49s cold, then cached
-by the service worker).
+Use the same complaint with both selections, for example:
 
-## MCP server
+```text
+There's a car blocking the bike lane on Main and Second.
+```
 
-Two tools, both read-only against Boston 311 (no real tickets filed):
-- `lookup_service({ category })` — plain-language category -> real 311
-  service code
-- `query_recent({ category, location? })` — recent open reports for that
-  category; falls back to citywide (not location-filtered) results if the
-  location text doesn't match any live address, rather than showing empty
+Run history and the A/B cards are filtered to the model currently selected in
+the dropdown, preventing accidental comparison of different models. In
+addition to wall time and call counts, each run records Ollama prompt and output
+token counts. Direct-agent mode remains allowed to fail when the selected model
+cannot produce a valid tool decision.
 
-Deploy notes: memory-light (~96MB RSS idle), purely request-driven (no
-polling / no busy loop) — verified locally. `GET /health` for health checks.
+For reproducibility, deterministic category and location behavior is checked
+against [`tests/fixtures/civic-issues.json`](tests/fixtures/civic-issues.json).
+Live report contents are not used as fixed assertions because Boston's public
+data changes continuously.
 
-## Rehearsed categories
+## Tests
 
-Verified live volume just before showtime, not assumed: **Illegal Parking**
-is reliably very active (new reports every few minutes). Traffic Signal is
-sparse (0 open reports when last checked) — do NOT rehearse on it. Backup
-categories confirmed to have live data: Abandoned Vehicle, Damaged Sign
-(Sign Repair). Re-check volume close to presentation time; city 311 traffic
-shifts through the day.
+```bash
+cd /workspace/boston-311-hack
+npm test
+```
 
-## Demo script (90s)
+The tests cover:
 
-1. "Small model on-device, real MCP server, real city data." (10s)
-2. Type/speak: "Car blocking the bike lane on Main and Second." (15s)
-3. Local model extracts JSON on screen — offline, no API key. (15s)
-4. App makes a real MCP call; server calls Boston 311 live; real open
-   reports render. (20s)
-5. "Only network calls: our MCP server, and its one call to the city.
-   Inference never left the browser." (15s)
-6. Close: model does language, MCP server does protocol + real tooling,
-   against a live municipal system — not a mock. (15s)
+- Purpose Pack compatibility with `tools/list`
+- Fail-closed behavior for missing tools and incompatible arguments
+- Workflow reference resolution and call limits
+- Direct-agent output parsing
+- Ollama model discovery, request shaping, tool-call conversion, and metrics
+- Deterministic civic-routing benchmark cases
+
+## Repository layout
+
+```text
+index.html                         PWA and comparison interface
+mcp-client.js                      Minimal streamable-HTTP MCP client
+ollama-client.js                   Local model discovery and chat adapter
+purpose-compiler.js                Generic client-side compiler/executor
+direct-agent.js                    Raw tools/list comparison baseline
+civic-normalizer.js                Testable Boston-specific normalization
+run-metrics.js                     Browser-local execution measurements
+purpose-packs/                     Portable application policy
+mcp-server/                        Existing read-only Boston 311 MCP server
+tests/                              Compiler and benchmark-fixture tests
+```
+
+## Scope and claims
+
+- The selected Ollama model does language processing; application code performs
+  MCP calls.
+- Purpose Packs are client-side policy. MCP servers do not need new endpoints or
+  code to support them.
+- The live demo uses real Boston Open311 data. A clearly labeled cached example
+  is shown only when a live MCP call times out.
+- The project measures orchestration quality across locally installed models;
+  it does not assume that every Ollama model supports reliable native tool use.

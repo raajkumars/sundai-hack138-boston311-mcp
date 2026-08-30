@@ -1,0 +1,11 @@
+[
+  { "input": "There's a car blocking the bike lane on Main St", "category": "Illegal Parking", "location": "Main St" },
+  { "input": "Someone double parked at Beacon and Charles", "category": "Illegal Parking", "location": "Beacon and Charles" },
+  { "input": "An abandoned truck is on Washington Ave", "category": "Abandoned Vehicle", "location": "Washington Ave" },
+  { "input": "An abandoned bicycle is chained near Tremont St", "category": "Abandoned Bicycle", "location": "Tremont St" },
+  { "input": "The traffic light is broken at Congress and State", "category": "Traffic Signal", "location": "Congress and State" },
+  { "input": "A damaged sign is down on Milk St", "category": "Damaged Sign", "location": "Milk St" },
+  { "input": "There are rats near Oak Sq", "category": "Rodent Sighting", "location": "Oak Sq" },
+  { "input": "I found a needle on Boylston Street", "category": "Needle Cleanup", "location": "Boylston Street" },
+  { "input": "Pothole by the library", "category": "Other", "location": "" }
+]
