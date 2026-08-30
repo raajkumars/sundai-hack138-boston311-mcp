@@ -1,0 +1,65 @@
+{
+  "profile_version": "0.1",
+  "task_id": "find-related-civic-reports",
+  "title": "Find related Boston 311 reports",
+  "objective": "Find recent public Boston 311 reports related to a described civic issue.",
+  "input_schema": {
+    "type": "object",
+    "required": ["description"],
+    "properties": {
+      "description": { "type": "string" },
+      "category": { "type": "string" },
+      "location": { "type": "string" }
+    }
+  },
+  "required_tools": ["lookup_service", "query_recent"],
+  "workflow": [
+    {
+      "id": "extract",
+      "executor": "model",
+      "description": "Normalize the complaint and identify its category and location.",
+      "output_schema": {
+        "type": "object",
+        "required": ["description", "category", "location"],
+        "properties": {
+          "description": { "type": "string" },
+          "category": { "type": "string" },
+          "location": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "lookup",
+      "executor": "mcp",
+      "tool": "lookup_service",
+      "arguments": {
+        "category": "$extract.category"
+      }
+    },
+    {
+      "id": "query",
+      "executor": "mcp",
+      "tool": "query_recent",
+      "arguments": {
+        "category": "$lookup.service_name",
+        "location": "$extract.location"
+      },
+      "omit_empty_arguments": ["location"]
+    }
+  ],
+  "result_step": "query",
+  "success_conditions": [
+    "model_output_valid",
+    "category_resolved",
+    "query_completed"
+  ],
+  "limits": {
+    "max_model_calls": 1,
+    "max_mcp_calls": 2
+  },
+  "privacy": {
+    "model_execution": "on-device",
+    "network_destinations": ["configured MCP server"],
+    "persistence": "run metrics only; civic issue text is not stored"
+  }
+}

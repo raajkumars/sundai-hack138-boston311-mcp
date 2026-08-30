@@ -1,7 +1,7 @@
 {
-  "name": "Small Model, Real MCP, Real 311",
-  "short_name": "311 MCP",
-  "description": "A local small model extracts a civic issue, then a real MCP server looks it up against Boston's live 311 data.",
+  "name": "MCP Purpose Compiler — Boston 311",
+  "short_name": "Purpose Compiler",
+  "description": "Compile a client-side task purpose into an efficient small-model workflow over an unchanged MCP server.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -3,8 +3,21 @@
 // the PWA) and GET-only caching below already skips those — the 311 lookup
 // stays live, which is the whole point: only inference is offline-capable,
 // the MCP call is deliberately real and current.
-const CACHE_NAME = 'sundai-311-mcp-v1'
-const SHELL = ['./', './index.html', './manifest.json', './vendor/transformers.min.js', './mcp-client.js']
+const CACHE_NAME = 'sundai-311-purpose-compiler-v2'
+const SHELL = [
+  './',
+  './index.html',
+  './manifest.json',
+  './vendor/transformers.min.js',
+  './vendor/ort-wasm-simd-threaded.jsep.wasm',
+  './vendor/ort-wasm-simd-threaded.jsep.mjs',
+  './mcp-client.js',
+  './purpose-compiler.js',
+  './direct-agent.js',
+  './run-metrics.js',
+  './civic-normalizer.js',
+  './purpose-packs/boston-311-related-reports.json',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -1,112 +1,171 @@
-# Sundai Hack 138 — Project 2 (2026-08-30)
+# MCP Purpose Compiler — Boston 311 reference application
 
-Throwaway demo scaffold. Scratch only — not a qwickapps product repo.
+Sundai Hack 138: **Small Models, Big Applications**.
 
-**Theme:** "Small Models, Big Applications." **@raaj + Ted (tedschwml@gmail.com).**
+This project demonstrates that a very small on-device model can complete a
+real MCP-backed task more reliably when the application's purpose is compiled
+into a constrained workflow instead of asking the model to reason about the
+protocol and choose every tool itself.
 
-## What this is
+The application is read-only. It never files Boston 311 requests.
 
-A PWA with a small local model (SmolLM2-135M-Instruct, transformers.js,
-WebGPU/WASM) that paraphrases a typed or spoken civic issue report; code
-deterministically pulls out a location and a category from the same text,
-then makes a **real MCP tool call** (streamable HTTP, JSON-RPC 2.0) to a
-small MCP server that looks it up against Boston's live Open311 API. The
-model does language, deterministic code does protocol and the structured
-fields — it never emits a tool call itself. (The model was originally
-Qwen2.5-0.5B-Instruct — swapped down for cold-load time, see "Model
-history" below; multi-field model output also proved unreliable at this
-size, see "Extraction design".)
+## What it demonstrates
 
-## Layout
+The browser runs SmolLM2-135M-Instruct locally with Transformers.js. It connects
+to an existing MCP server that exposes two tools backed by Boston's live Open311
+API:
 
-- `index.html`, `manifest.json`, `sw.js`, `mcp-client.js`, `vendor/`,
-  `models/`, `icons/` — the PWA (static, no build step)
-- `mcp-server/` — the MCP server (Node/Express, `npm install && npm start`,
-  listens on `PORT` env var, default 8311)
+- `lookup_service({ category })`
+- `query_recent({ category, location? })`
 
-`vendor/` and `models/` are gitignored (180MB+ of binary weights/library) —
-**a fresh clone will be missing both**. Run "Regenerating vendored assets"
-below first, or `index.html` will fail to load with a 404 on those paths.
+The MCP server is unchanged by the Purpose Compiler. All new orchestration is
+client-side and uses only standard `initialize`, `tools/list`, and `tools/call`
+requests.
 
-## Regenerating vendored assets (required after a fresh clone)
+Two strategies are available in the UI:
+
+1. **Purpose compiled** — a local Purpose Pack declares the validated workflow.
+   The small model performs one narrow language task; deterministic code owns
+   category rules, MCP routing, argument validation, call limits, and result
+   handling.
+2. **Direct MCP agent** — the same model receives raw `tools/list` descriptions
+   and chooses tool calls itself. This is the comparison baseline.
+
+Every run records wall time, model time, model calls, MCP calls, status, and
+location fallback behavior in browser-local storage. Complaint text is not
+stored.
+
+## Architecture
+
+```text
+Existing MCP server (unchanged)
+  initialize + tools/list + tools/call
+                    |
+                    v
+       Client-side Purpose Pack
+                    |
+                    v
+       Workflow compiler + validator
+                    |
+          +---------+----------+
+          |                    |
+          v                    v
+   on-device model      deterministic MCP calls
+          |                    |
+          +---------+----------+
+                    v
+          live Boston 311 results
+```
+
+The portable policy is
+[`purpose-packs/boston-311-related-reports.json`](purpose-packs/boston-311-related-reports.json).
+The generic compiler is [`purpose-compiler.js`](purpose-compiler.js).
+
+## Prerequisites
+
+- Node.js 18 or newer
+- Python 3 (used only as a no-build static file server)
+- `curl`
+- Chrome or another browser with WebGPU preferred; WASM is the fallback
+- About 200 MB of disk space for browser model assets
+
+## First-time setup
+
+The model and Transformers.js assets are intentionally ignored by Git. Download
+the pinned public artifacts once:
 
 ```bash
-BASE="https://huggingface.co/onnx-community/SmolLM2-135M-Instruct-ONNX/resolve/main"
-DEST="models/onnx-community/SmolLM2-135M-Instruct-ONNX"
-mkdir -p "$DEST/onnx"
-for f in config.json generation_config.json merges.txt tokenizer.json tokenizer_config.json vocab.json special_tokens_map.json; do
-  curl -sSL "$BASE/$f" -o "$DEST/$f"
-done
-curl -sSL "$BASE/onnx/model_q4.onnx" -o "$DEST/onnx/model_q4.onnx"   # ~180MB
-
-mkdir -p vendor
-curl -sSL "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2" -o vendor/transformers.min.js
+cd /workspace/boston-311-hack
+npm run setup:assets
 ```
 
-Verified 2026-08-30: cloned fresh with no local git credentials (same
-situation as any collaborator), ran this recipe verbatim, all 9 files
-downloaded 200.
+The script is idempotent and pins Transformers.js, ONNX Runtime Web, and the
+model repository revision. Browser inference makes no model-host request after
+these assets are installed.
 
-## Local run
+## Start locally
 
+Terminal 1 — existing MCP server:
+
+```bash
+cd /workspace/boston-311-hack/mcp-server
+npm install
+npm start
 ```
-cd mcp-server && npm install && npm start   # :8311
-python3 -m http.server 8899                 # PWA, separate terminal
+
+The server listens on port `8311` by default. Verify it with:
+
+```bash
+curl http://localhost:8311/health
 ```
 
-Open http://localhost:8899 — the PWA's `MCP_SERVER_URL` defaults to
-`http://localhost:8311/mcp`; override via `window.MCP_SERVER_URL` before
-`index.html`'s module script runs, or edit the constant, once hosted.
+Terminal 2 — static PWA:
 
-## Extraction design
+```bash
+cd /workspace/boston-311-hack
+npm run serve
+```
 
-The model outputs one thing: a short plain-sentence paraphrase of the
-complaint. Earlier attempts had it also emit JSON, then labeled
-LOCATION/CATEGORY/DESCRIPTION lines — both drifted between runs at this
-model size (copying a few-shot example's text instead of the real input,
-occasionally fabricating a detail). Location is pulled from the raw input
-with a preposition heuristic (`on/at/near <place>`); category is a
-deterministic keyword classifier — see `CATEGORY_RULES` in `index.html`.
-Verified across several differently-phrased inputs, not just the
-rehearsed line.
+Open <http://localhost:8899>. The first page load reads the model from the local
+static server and caches the application shell. Allow microphone access only if
+you want speech input.
 
-## Model history
+The PWA defaults to `http://localhost:8311/mcp`. A deployment can set
+`window.MCP_SERVER_URL` before the module script executes.
 
-Qwen2.5-0.5B-Instruct (763MB) -> hit a real cold-load wall through the
-gateway (~3.5min at measured throughput) — same class of problem project 1
-hit first. Swapped to project 1's already-validated fix,
-SmolLM2-135M-Instruct-ONNX (180MB, ~180MB/3.7MBps ≈ 49s cold, then cached
-by the service worker).
+## Compare the strategies
 
-## MCP server
+Use the same complaint with both selections, for example:
 
-Two tools, both read-only against Boston 311 (no real tickets filed):
-- `lookup_service({ category })` — plain-language category -> real 311
-  service code
-- `query_recent({ category, location? })` — recent open reports for that
-  category; falls back to citywide (not location-filtered) results if the
-  location text doesn't match any live address, rather than showing empty
+```text
+There's a car blocking the bike lane on Main and Second.
+```
 
-Deploy notes: memory-light (~96MB RSS idle), purely request-driven (no
-polling / no busy loop) — verified locally. `GET /health` for health checks.
+The run history compares observable execution results. Purpose-compiled mode is
+the reliable demo path; direct-agent mode is intentionally allowed to fail when
+the 135M model cannot produce a valid tool decision.
 
-## Rehearsed categories
+For reproducibility, deterministic category and location behavior is checked
+against [`tests/fixtures/civic-issues.json`](tests/fixtures/civic-issues.json).
+Live report contents are not used as fixed assertions because Boston's public
+data changes continuously.
 
-Verified live volume just before showtime, not assumed: **Illegal Parking**
-is reliably very active (new reports every few minutes). Traffic Signal is
-sparse (0 open reports when last checked) — do NOT rehearse on it. Backup
-categories confirmed to have live data: Abandoned Vehicle, Damaged Sign
-(Sign Repair). Re-check volume close to presentation time; city 311 traffic
-shifts through the day.
+## Tests
 
-## Demo script (90s)
+```bash
+cd /workspace/boston-311-hack
+npm test
+```
 
-1. "Small model on-device, real MCP server, real city data." (10s)
-2. Type/speak: "Car blocking the bike lane on Main and Second." (15s)
-3. Local model extracts JSON on screen — offline, no API key. (15s)
-4. App makes a real MCP call; server calls Boston 311 live; real open
-   reports render. (20s)
-5. "Only network calls: our MCP server, and its one call to the city.
-   Inference never left the browser." (15s)
-6. Close: model does language, MCP server does protocol + real tooling,
-   against a live municipal system — not a mock. (15s)
+The tests cover:
+
+- Purpose Pack compatibility with `tools/list`
+- Fail-closed behavior for missing tools and incompatible arguments
+- Workflow reference resolution and call limits
+- Direct-agent output parsing
+- Deterministic civic-routing benchmark cases
+
+## Repository layout
+
+```text
+index.html                         PWA and comparison interface
+mcp-client.js                      Minimal streamable-HTTP MCP client
+purpose-compiler.js                Generic client-side compiler/executor
+direct-agent.js                    Raw tools/list comparison baseline
+civic-normalizer.js                Testable Boston-specific normalization
+run-metrics.js                     Browser-local execution measurements
+purpose-packs/                     Portable application policy
+mcp-server/                        Existing read-only Boston 311 MCP server
+scripts/setup-assets.sh            Reproducible ignored-asset download
+tests/                              Compiler and benchmark-fixture tests
+```
+
+## Scope and claims
+
+- The local model does language processing; application code performs MCP calls.
+- Purpose Packs are client-side policy. MCP servers do not need new endpoints or
+  code to support them.
+- The live demo uses real Boston Open311 data. A clearly labeled cached example
+  is shown only when a live MCP call times out.
+- The project measures orchestration quality; it does not claim the 135M model
+  has native or generally reliable MCP tool-calling ability.

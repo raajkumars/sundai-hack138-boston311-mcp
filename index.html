@@ -3,11 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Small model, real MCP, real 311</title>
+<title>MCP Purpose Compiler — Boston 311</title>
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
 <meta name="theme-color" content="#0b0d14" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <style>
   :root {
@@ -78,6 +79,11 @@
   textarea::placeholder { color: var(--text-2); }
   textarea:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
   textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+  select {
+    width: 100%; font: inherit; font-size: 14px; color: var(--text-0); background: var(--bg-0);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; margin-bottom: 4px;
+  }
+  select:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
   button {
     font-family: inherit; font-size: 15px; font-weight: 600; color: #0b0d14;
     background: linear-gradient(135deg, var(--accent-0), var(--accent-1)); border: none;
@@ -107,6 +113,23 @@
   }
   .report .addr { color: var(--text-1); font-size: 12.5px; margin-top: 4px; }
   .report .meta { color: var(--text-2); font-size: 11.5px; margin-top: 4px; }
+  .purpose-status {
+    background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 10px;
+    color: var(--text-1); font: 12px/1.5 'SF Mono', ui-monospace, Menlo, monospace;
+    margin: 0 0 16px; padding: 10px 12px;
+  }
+  .purpose-status.ready { border-color: rgba(74, 222, 128, 0.35); color: var(--ok); }
+  .purpose-status.error { border-color: rgba(248, 113, 113, 0.45); color: #fca5a5; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .metric { background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 9px; padding: 10px; }
+  .metric span { display: block; color: var(--text-2); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .metric strong { display: block; color: var(--text-0); font-size: 15px; margin-top: 3px; }
+  .history { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .history th, .history td { border-bottom: 1px solid var(--border-soft); padding: 8px 5px; text-align: left; }
+  .history th { color: var(--text-2); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .history td { color: var(--text-1); }
+  .history .passed { color: var(--ok); }
+  @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   #output { animation: fadeIn 0.45s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -115,30 +138,37 @@
 </head>
 <body>
   <div class="page">
-    <span class="kicker">On-device model + real MCP tool</span>
-    <h1>Small model, real MCP server, real 311 data</h1>
+    <span class="kicker">MCP Purpose Compiler</span>
+    <h1>Compile purpose, not protocol</h1>
     <p class="lede">
       <strong>Describe a civic issue — speak or type.</strong>
-      A small model running in this tab extracts the structured request.
-      Deterministic code then makes a real MCP tool call to a server that
-      looks it up against Boston's live 311 system.
+      A client-side Purpose Pack gives a tiny local model one bounded language
+      task, then validated code executes the required workflow through an
+      unchanged MCP server against Boston's live 311 system.
     </p>
 
     <div class="badge-row">
-      <span class="feature-badge">⚡ Local extraction, WebGPU</span>
-      <span class="feature-badge">🔌 Real MCP over streamable HTTP</span>
+      <span class="feature-badge">⚡ 135M model, on device</span>
+      <span class="feature-badge">🧭 Client-side Purpose Pack</span>
+      <span class="feature-badge">🔌 Unchanged MCP server</span>
       <span class="feature-badge">🏛️ Live Boston 311 data</span>
     </div>
 
     <div class="panel">
       <p id="status">Loading model...</p>
       <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+      <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
+      <label class="field-label" for="strategy">Orchestration strategy</label>
+      <select id="strategy">
+        <option value="compiled">Purpose compiled — constrained, validated workflow</option>
+        <option value="direct">Direct MCP agent — raw tools/list baseline</option>
+      </select>
       <label class="field-label" for="input">Civic issue</label>
       <div class="input-row">
         <textarea id="input" placeholder="e.g. There's a car blocking the bike lane on Main and Second" disabled></textarea>
         <button id="mic" title="Speak instead" disabled>🎤</button>
       </div>
-      <button id="go" disabled>Extract &amp; look up (local model + real MCP call)</button>
+      <button id="go" disabled>Run local model + real MCP workflow</button>
     </div>
 
     <div id="output" class="panel" style="display:none">
@@ -148,6 +178,19 @@
       <pre id="mcpCall"></pre>
       <h2>3. Result — real Boston 311 data</h2>
       <div id="mcpResult"></div>
+      <h2>4. Measured execution</h2>
+      <div id="runMetrics" class="metrics-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0">Recent comparison runs</h2>
+      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each strategy. Metrics stay in this browser; complaint text is not stored.</p>
+      <div style="overflow-x:auto">
+        <table class="history">
+          <thead><tr><th>Strategy</th><th>Status</th><th>Total</th><th>Model</th><th>Model calls</th><th>MCP calls</th></tr></thead>
+          <tbody id="runHistory"></tbody>
+        </table>
+      </div>
     </div>
 
     <footer class="note">Sundai Hack 138 · MIT — model runs on-device, MCP call is real and live.</footer>
@@ -162,12 +205,17 @@
   </script>
   <script type="module">
     import { pipeline, env } from './vendor/transformers.min.js'
-    import { mcpCallTool } from './mcp-client.js'
+    import { mcpCallTool, mcpInitialize, mcpListTools } from './mcp-client.js'
+    import { compilePurposePack, executePlan, loadPurposePack } from './purpose-compiler.js'
+    import { runDirectAgent } from './direct-agent.js'
+    import { createRunMetrics, loadRuns } from './run-metrics.js'
+    import { parseExtraction } from './civic-normalizer.js'
 
     // Weights are vendored in ./models — no Hugging Face Hub call, ever.
     env.allowRemoteModels = false
     env.allowLocalModels = true
     env.localModelPath = './models/'
+    env.backends.onnx.wasm.wasmPaths = new URL('./vendor/', window.location.href).href
 
     // Swap this to the deployed MCP server URL once devops-lead hosts it.
     const MCP_SERVER_URL = window.MCP_SERVER_URL || 'http://localhost:8311/mcp'
@@ -183,6 +231,13 @@
     const input = document.getElementById('input')
     const go = document.getElementById('go')
     const mic = document.getElementById('mic')
+    const strategy = document.getElementById('strategy')
+    const purposeStatus = document.getElementById('purposeStatus')
+    const PURPOSE_PACK_URL = './purpose-packs/boston-311-related-reports.json'
+    let purposePack
+    let compiledPlan
+    let mcpTools = []
+    let mcpReady
 
     function mb(bytes) { return (bytes / (1024 * 1024)).toFixed(1) }
 
@@ -196,19 +251,56 @@
     }
 
     let generator
+    async function discoverAndCompile() {
+      purposeStatus.className = 'purpose-status'
+      purposeStatus.textContent = 'Discovering MCP tools and compiling local Purpose Pack...'
+      try {
+        const [pack] = await Promise.all([
+          loadPurposePack(PURPOSE_PACK_URL),
+          mcpInitialize(MCP_SERVER_URL),
+        ])
+        const tools = await mcpListTools(MCP_SERVER_URL)
+        const plan = compilePurposePack(pack, tools)
+        purposePack = pack
+        mcpTools = tools
+        compiledPlan = plan
+        purposeStatus.className = 'purpose-status ready'
+        purposeStatus.textContent = `Purpose Pack ready: ${plan.objective} (${plan.steps.length} steps, ${tools.length} MCP tools verified)`
+        return plan
+      } catch (error) {
+        purposeStatus.className = 'purpose-status error'
+        purposeStatus.textContent = `Purpose Pack unavailable: ${error.message}`
+        throw error
+      }
+    }
+
+    async function ensureMcpReady() {
+      if (compiledPlan && mcpTools.length) return compiledPlan
+      mcpReady = discoverAndCompile()
+      return mcpReady
+    }
+
     async function load() {
       try {
-        generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'webgpu', progress_callback: onProgress })
-      } catch (err) {
-        statusEl.textContent = 'WebGPU unavailable, falling back to WASM (slower, still local)...'
-        generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'wasm', progress_callback: onProgress })
+        try {
+          generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'webgpu', progress_callback: onProgress })
+        } catch (webgpuError) {
+          console.warn('WebGPU model load failed, trying WASM:', webgpuError)
+          statusEl.textContent = 'WebGPU unavailable, falling back to WASM (slower, still local)...'
+          generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'wasm', progress_callback: onProgress })
+        }
+        progressEl.style.width = '100%'
+        progressTrack.classList.add('done')
+        statusEl.textContent = `Loaded ${MODEL} (180MB, one-time) — extraction runs with 0 network calls from here.`
+        input.disabled = false
+        go.disabled = false
+      } catch (error) {
+        console.error('Local model failed to load:', error)
+        statusEl.textContent = `Local model failed to load: ${error.message}`
       }
-      progressEl.style.width = '100%'
-      progressTrack.classList.add('done')
-      statusEl.textContent = `Loaded ${MODEL} (180MB, one-time) — extraction runs with 0 network calls from here.`
-      input.disabled = false
-      go.disabled = false
     }
+    mcpReady = discoverAndCompile()
+    mcpReady.catch(() => {})
     load()
 
     // Speech input — built into Chrome, no dependency. Degrades to
@@ -227,14 +319,9 @@
       mic.style.display = 'none'
     }
 
-    // Labeled lines, not JSON — a 135M model reliably follows a fixed
-    // 3-line template but is not reliable at valid JSON syntax (learned
-    // from project 1, which hit the same wall). CATEGORY is a closed list
-    // matching the server's real Boston 311 service names, turning
-    // extraction into near-multiple-choice instead of open text — the
-    // server still does the authoritative match, this just makes the
-    // model's job small enough for a 135M model to do well.
-    // A single field only: paraphrase the complaint in one short sentence.
+    // The compiled path gives the 135M model one narrow task: paraphrase the
+    // complaint in a short sentence. JSON shaping, category rules, location
+    // extraction, MCP routing, validation, and limits belong to code.
     // Testing showed this 135M model gets progressively less reliable the
     // more fields/decisions it's asked for in one pass — a 2-3 field
     // labeled-line format drifted between runs (copying a few-shot
@@ -250,37 +337,6 @@ Output: streetlight out for a week on Elm Ave
 
 Input: There's a rat problem behind the dumpster on Oak St
 Output: rats behind the dumpster on Oak St`
-
-    function parseExtraction(reply, rawText) {
-      const line = (reply.match(/Output:\s*(.+)/i)?.[1] || reply.split('\n')[0] || '').trim()
-      const description = (line || rawText).replace(/^["']|["']$/g, '').slice(0, 100)
-      return { description, location: locationOf(rawText) }
-    }
-
-    // Deterministic location heuristic — common English preposition
-    // patterns ("on Main St", "at Beacon and Charles", "near the park").
-    function locationOf(text) {
-      const m = text.match(/\b(?:on|at|near)\s+([A-Z][\w'&]*(?:\s+(?:and|&)\s+[A-Z][\w'&]*|\s+(?:St|Ave|Rd|Blvd|Street|Avenue|Road|Boulevard|Ln|Lane|Sq|Square|Way)\b)?)/)
-      return m ? m[1].trim() : ''
-    }
-
-    // Deterministic, not model-driven — matches the server's real Boston
-    // 311 service names. Order matters: more specific rules (abandoned
-    // bike/vehicle) are checked before the generic ones they could
-    // otherwise be caught by (bike lane mentions, parked-car mentions).
-    const CATEGORY_RULES = [
-      { category: 'Rodent Sighting', test: /\b(rat|rats|rodent|mice|mouse)\b/i },
-      { category: 'Needle Cleanup', test: /\bneedle/i },
-      { category: 'Abandoned Bicycle', test: /abandon\w*.*(bike|bicycle)|(bike|bicycle).*abandon/i },
-      { category: 'Abandoned Vehicle', test: /abandon\w*.*(car|vehicle|truck)|(car|vehicle|truck).*abandon/i },
-      { category: 'Damaged Sign', test: /\bsign\b.*(broken|damaged|down|missing|knocked)|\b(broken|damaged)\b.*\bsign\b/i },
-      { category: 'Traffic Signal', test: /\b(traffic light|streetlight|signal|stoplight)\b/i },
-      { category: 'Illegal Parking', test: /\b(park(ed|ing)?|blocking|double.?park)\b/i },
-    ]
-    function classifyCategory(description) {
-      const hit = CATEGORY_RULES.find((r) => r.test.test(description))
-      return hit ? hit.category : 'Other'
-    }
 
     // Captured live during rehearsal (real Boston 311 reports, not
     // fabricated) — shown only if the live MCP call times out on stage, so
@@ -333,46 +389,140 @@ Output: rats behind the dumpster on Oak St`
       })
     }
 
+    function generatedReply(output) {
+      const generated = output?.[0]?.generated_text
+      if (Array.isArray(generated)) return generated.at(-1)?.content || ''
+      return String(generated || '')
+    }
+
+    async function compiledExtraction(rawText) {
+      const out = await generator(
+        [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Input: ${rawText}` },
+        ],
+        { max_new_tokens: 40, do_sample: false }
+      )
+      return parseExtraction(generatedReply(out), rawText)
+    }
+
+    async function directGeneration(prompt) {
+      const out = await generator(
+        [
+          { role: 'system', content: 'Act as an MCP tool-using agent. Follow the requested output format exactly.' },
+          { role: 'user', content: prompt },
+        ],
+        { max_new_tokens: 40, do_sample: false }
+      )
+      return generatedReply(out)
+    }
+
+    function renderCallTrace(events) {
+      const calls = events
+        .filter((event) => event.type === 'mcp_call')
+        .map(({ step, tool, arguments: args }) => ({ step, tool, arguments: args }))
+      document.getElementById('mcpCall').textContent = `tools/call -> ${MCP_SERVER_URL}\n${JSON.stringify(calls, null, 2)}`
+    }
+
+    function renderRunMetrics(run) {
+      const fields = [
+        ['Strategy', run.strategy === 'compiled' ? 'Purpose compiled' : 'Direct agent'],
+        ['Status', run.status],
+        ['Total', `${run.durationMs} ms`],
+        ['Model', `${run.modelDurationMs} ms`],
+        ['Model calls', run.modelCalls],
+        ['MCP calls', run.mcpCalls],
+        ['Category', run.category || '—'],
+        ['Location match', run.locationMatched === false ? 'citywide fallback' : run.locationMatched === true ? 'yes' : 'not filtered'],
+      ]
+      document.getElementById('runMetrics').innerHTML = fields.map(([label, value]) =>
+        `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`
+      ).join('')
+      renderRunHistory()
+    }
+
+    function renderRunHistory() {
+      const rows = loadRuns().slice(0, 8)
+      document.getElementById('runHistory').innerHTML = rows.length
+        ? rows.map((run) => `<tr><td>${run.strategy}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
+        : '<tr><td colspan="6">No measured runs yet.</td></tr>'
+    }
+
+    renderRunHistory()
+
     go.onclick = async () => {
       const text = input.value.trim()
       if (!text) return
       go.disabled = true
-      const started = performance.now()
-      go.textContent = 'Extracting locally...'
+      const selectedStrategy = strategy.value
+      const metrics = createRunMetrics(selectedStrategy, MODEL)
+      go.textContent = selectedStrategy === 'compiled' ? 'Compiling purpose workflow...' : 'Running direct MCP agent...'
       document.getElementById('output').style.display = 'block'
+      document.getElementById('stepLabel').textContent = selectedStrategy === 'compiled'
+        ? '1. Purpose-compiled extraction (running locally...)'
+        : '1. Direct agent decision (running from raw tools/list...)'
+      document.getElementById('extracted').textContent = ''
       document.getElementById('mcpCall').textContent = ''
       document.getElementById('mcpResult').innerHTML = ''
+      document.getElementById('runMetrics').innerHTML = ''
       try {
-        const out = await generator(
-          [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `Input: ${text}` },
-          ],
-          { max_new_tokens: 40, do_sample: false }
-        )
-        const latency = Math.round(performance.now() - started)
-        const reply = out[0].generated_text.at(-1).content
-        const extracted = parseExtraction(reply, text)
-        extracted.category = classifyCategory(text)
-        document.getElementById('stepLabel').textContent = `1. Model extraction — ${MODEL} (local, ${latency}ms)`
-        document.getElementById('extracted').textContent = JSON.stringify(extracted, null, 2)
-
-        go.textContent = 'Calling MCP server...'
-        const callPayload = { name: 'query_recent', arguments: { category: extracted.category, location: extracted.location || undefined } }
-        document.getElementById('mcpCall').textContent = `tools/call -> ${MCP_SERVER_URL}\n${JSON.stringify(callPayload, null, 2)}`
-
-        try {
-          const result = await mcpCallTool(MCP_SERVER_URL, callPayload.name, callPayload.arguments)
-          renderResult(result)
-        } catch (mcpErr) {
-          console.warn('MCP call failed, using cached fallback:', mcpErr)
-          renderResult(CANNED_FALLBACK, true)
+        await ensureMcpReady()
+        let execution
+        if (selectedStrategy === 'compiled') {
+          execution = await executePlan(
+            compiledPlan,
+            {
+              model: async (_step, state) => compiledExtraction(state.input.complaint),
+              mcp: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
+            },
+            { complaint: text },
+            (event) => metrics.record(event)
+          )
+          document.getElementById('stepLabel').textContent = `1. Purpose-compiled extraction — ${MODEL} (local)`
+          document.getElementById('extracted').textContent = JSON.stringify(execution.state.extract, null, 2)
+        } else {
+          execution = await runDirectAgent({
+            complaint: text,
+            tools: mcpTools,
+            generate: directGeneration,
+            callTool: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
+            maxSteps: 2,
+            onEvent: (event) => {
+              metrics.record(event)
+              if (event.type === 'direct_model_call') {
+                document.getElementById('extracted').textContent = event.reply
+              }
+            },
+          })
+          document.getElementById('stepLabel').textContent = `1. Direct agent decisions — ${MODEL} (raw tools/list)`
+          document.getElementById('extracted').textContent = JSON.stringify(execution.decisions, null, 2)
         }
+
+        renderCallTrace(metrics.events)
+        renderResult(execution.result)
+        const run = metrics.finish({
+          status: 'passed',
+          category: execution.result?.matched?.service_name,
+          locationMatched: execution.result?.locationMatched,
+        })
+        renderRunMetrics(run)
       } catch (err) {
-        document.getElementById('mcpResult').innerHTML = `<div class="report">Error: ${err.message}</div>`
+        renderCallTrace(metrics.events)
+        const hadMcpCall = metrics.events.some((event) => event.type === 'mcp_call')
+        if (selectedStrategy === 'compiled' && hadMcpCall && /MCP|fetch|network|timed out|Failed to fetch/i.test(err.message)) {
+          console.warn('MCP call failed, using cached fallback:', err)
+          renderResult(CANNED_FALLBACK, true)
+          renderRunMetrics(metrics.finish({ status: 'cached-fallback', category: CANNED_FALLBACK.matched.service_name }))
+        } else {
+          const report = document.createElement('div')
+          report.className = 'report'
+          report.textContent = `Error: ${err.message}`
+          document.getElementById('mcpResult').appendChild(report)
+          renderRunMetrics(metrics.finish({ status: 'failed', error: err.message }))
+        }
       } finally {
         go.disabled = false
-        go.textContent = 'Extract & look up (local model + real MCP call)'
+        go.textContent = 'Run local model + real MCP workflow'
       }
     }
   </script>
