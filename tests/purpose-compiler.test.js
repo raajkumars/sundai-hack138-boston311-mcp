@@ -5,7 +5,7 @@ import test from 'node:test'
 import { classifyCategory, locationOf } from '../civic-normalizer.js'
 import { compilePurposePack, executePlan, PurposeCompilerError } from '../purpose-compiler.js'
 import { buildDirectAgentPrompt, describeDirectFailure, parseDirectDecision, runDirectAgent } from '../direct-agent.js'
-import { selectInferenceDevice } from '../model-backend.js'
+import { chatOllama, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, toolCallDecision } from '../ollama-client.js'
 
 const root = new URL('../', import.meta.url)
 const pack = JSON.parse(await readFile(new URL('purpose-packs/boston-311-related-reports.json', root)))
@@ -89,8 +89,8 @@ test('parses function-style query arguments and canonicalizes the tool name', ()
 test('direct-agent prompt makes the exact available names salient', () => {
   const prompt = buildDirectAgentPrompt(tools, 'blocked lane')
   assert.match(prompt, /AVAILABLE TOOL NAMES \(copy one exactly\):\nlookup_service \| query_recent/)
-  assert.match(prompt, /TOOL: query_recent\nCATEGORY: broken traffic light\nLOCATION: Beacon and Arlington/)
-  assert.match(prompt, /Reply with exactly three labeled lines and no explanation/)
+  assert.match(prompt, /Tool arguments must describe this complaint/)
+  assert.doesNotMatch(prompt, /broken traffic light|Beacon and Arlington/)
 })
 
 test('classifies a missing direct tool choice as a measured baseline failure', () => {
@@ -120,10 +120,55 @@ test('deterministic civic routing passes the benchmark fixtures', async () => {
   }
 })
 
-test('selects WASM before pipeline creation when WebGPU is unavailable', async () => {
-  assert.equal(await selectInferenceDevice(undefined), 'wasm')
-  assert.equal(await selectInferenceDevice({ requestAdapter: async () => null }), 'wasm')
-  assert.equal(await selectInferenceDevice({ requestAdapter: async () => { throw new Error('adapter unavailable') } }), 'wasm')
-  assert.equal(await selectInferenceDevice({ requestAdapter: async () => ({}) }), 'webgpu')
-  assert.equal(await selectInferenceDevice(undefined, 'webgpu'), 'webgpu')
+test('discovers and labels locally installed Ollama models', async () => {
+  const fakeFetch = async () => ({
+    ok: true,
+    json: async () => ({ models: [{ name: 'llama3.2:1b', details: { parameter_size: '1.2B', quantization_level: 'Q8_0' } }] }),
+  })
+  const models = await listOllamaModels('http://localhost:11434', fakeFetch)
+  assert.equal(models[0].name, 'llama3.2:1b')
+  assert.equal(ollamaModelLabel(models[0]), 'llama3.2:1b — 1.2B · Q8_0')
+})
+
+test('preloads the selected Ollama model for fair warm-start comparisons', async () => {
+  let requestBody
+  const fakeFetch = async (_url, init) => {
+    requestBody = JSON.parse(init.body)
+    return { ok: true, json: async () => ({ model: 'llama3.1:8b', load_duration: 8_000_000, total_duration: 10_000_000 }) }
+  }
+  const result = await preloadOllamaModel('http://localhost:11434', 'llama3.1:8b', fakeFetch)
+  assert.deepEqual(requestBody, { model: 'llama3.1:8b', stream: false, keep_alive: '10m' })
+  assert.deepEqual(result, { model: 'llama3.1:8b', loadDurationMs: 8, totalDurationMs: 10 })
+})
+
+test('sends non-streaming Ollama chat requests and exposes inference metrics', async () => {
+  let requestBody
+  const fakeFetch = async (_url, init) => {
+    requestBody = JSON.parse(init.body)
+    return {
+      ok: true,
+      json: async () => ({
+        model: 'llama3.1:8b',
+        message: { content: '', tool_calls: [{ function: { name: 'query_recent', arguments: { category: 'Illegal Parking' } } }] },
+        total_duration: 25_000_000,
+        load_duration: 5_000_000,
+        prompt_eval_count: 42,
+        eval_count: 7,
+      }),
+    }
+  }
+  const response = await chatOllama('http://localhost:11434', {
+    model: 'llama3.1:8b',
+    messages: [{ role: 'user', content: 'blocked bike lane' }],
+    tools: ollamaTools(tools),
+  }, fakeFetch)
+
+  assert.equal(requestBody.stream, false)
+  assert.equal(requestBody.options.temperature, 0)
+  assert.equal(requestBody.tools[1].function.name, 'query_recent')
+  assert.deepEqual(toolCallDecision(response), { tool: 'query_recent', arguments: { category: 'Illegal Parking' } })
+  assert.deepEqual(
+    { totalDurationMs: response.totalDurationMs, loadDurationMs: response.loadDurationMs, promptTokens: response.promptTokens, outputTokens: response.outputTokens },
+    { totalDurationMs: 25, loadDurationMs: 5, promptTokens: 42, outputTokens: 7 }
+  )
 })

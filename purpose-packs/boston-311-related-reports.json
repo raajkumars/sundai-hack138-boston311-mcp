@@ -58,7 +58,7 @@
     "max_mcp_calls": 2
   },
   "privacy": {
-    "model_execution": "on-device",
+    "model_execution": "local-ollama",
     "network_destinations": ["configured MCP server"],
     "persistence": "run metrics only; civic issue text is not stored"
   }

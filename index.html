@@ -60,12 +60,8 @@
     content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-1);
     box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18); flex: none; animation: pulse 1.6s ease-in-out infinite;
   }
-  .progress-track {
-    height: 6px; background: var(--bg-0); border: 1px solid var(--border-soft);
-    border-radius: 999px; overflow: hidden; margin: 0 0 16px;
-  }
-  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-0), var(--accent-1)); transition: width 0.25s ease; }
-  .progress-track.done { opacity: 0; height: 0; margin: 0; border-width: 0; transition: opacity 0.3s ease, height 0.3s ease 0.3s, margin 0.3s ease 0.3s, border-width 0.3s ease 0.3s; }
+  #status.ready::before { background: var(--ok); animation: none; box-shadow: 0 0 0 3px rgba(74, 222, 128, .15); }
+  #status.error::before { background: #f87171; animation: none; box-shadow: 0 0 0 3px rgba(248, 113, 113, .15); }
   label.field-label {
     display: block; font-size: 12.5px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
     color: var(--text-2); margin-bottom: 10px;
@@ -79,6 +75,14 @@
   textarea::placeholder { color: var(--text-2); }
   textarea:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
   textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+  select {
+    width: 100%; font: inherit; font-size: 14px; color: var(--text-0); background: var(--bg-0);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px;
+  }
+  select:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
+  select:disabled { color: var(--text-2); cursor: not-allowed; opacity: .7; }
+  .model-picker { margin-bottom: 18px; }
+  .model-note { color: var(--text-2); font-size: 11.5px; margin: 7px 0 0; }
   .experiment-question {
     font-size: 18px; line-height: 1.35; color: var(--text-0); margin: 0 0 14px;
   }
@@ -192,24 +196,31 @@
 <body>
   <div class="page">
     <span class="kicker">MCP Purpose Compiler</span>
-    <h1>Can orchestration make a 135M model better at MCP?</h1>
+    <h1>Can orchestration make a local model better at MCP?</h1>
     <p class="lede">
       <strong>This demo is a controlled comparison.</strong> Give the same civic
-      issue to the same tiny local model and the same live Boston 311 MCP server.
+      issue to the same selected Ollama model and the same live Boston 311 MCP server.
       Change only how the work is orchestrated.
     </p>
 
     <div class="badge-row">
-      <span class="feature-badge">⚡ 135M model, on device</span>
+      <span id="modelBadge" class="feature-badge">⚡ Local model via Ollama</span>
       <span class="feature-badge">🧭 Client-side Purpose Pack</span>
       <span class="feature-badge">🔌 Unchanged MCP server</span>
       <span class="feature-badge">🏛️ Live Boston 311 data</span>
     </div>
 
     <div class="panel">
+      <div class="model-picker">
+        <label class="field-label" for="ollamaModel">Local Ollama model — used by both arms</label>
+        <select id="ollamaModel" disabled>
+          <option>Discovering installed models...</option>
+        </select>
+        <p class="model-note">Loaded from your local Ollama service at <code id="ollamaEndpoint"></code>. Changing the model filters the comparison to that model.</p>
+      </div>
       <p class="experiment-question"><strong>Choose an experiment arm</strong></p>
       <div class="controlled-variables" aria-label="Controlled variables">
-        <div class="controlled-variable"><span>Same model</span><strong>SmolLM2 · 135M · local</strong></div>
+        <div class="controlled-variable"><span>Same model</span><strong id="sameModelValue">Discovering Ollama...</strong></div>
         <div class="controlled-variable"><span>Same task</span><strong>Find related 311 reports</strong></div>
         <div class="controlled-variable"><span>Same tools</span><strong>Live, unchanged MCP server</strong></div>
       </div>
@@ -218,22 +229,21 @@
           <input type="radio" name="strategy" value="direct" />
           <span class="strategy-card">
             <span class="strategy-heading"><strong>A · Direct model baseline</strong><span class="arm-label">Baseline</span></span>
-            <p>The 135M model sees raw <code>tools/list</code> descriptions and must decide which MCP tools to call and with what arguments.</p>
-            <span class="strategy-flow">complaint → 135M agent → MCP tools</span>
+            <p>The selected model sees raw <code>tools/list</code> descriptions and must decide which MCP tools to call and with what arguments.</p>
+            <span class="strategy-flow">complaint → selected model → MCP tools</span>
           </span>
         </label>
         <label class="strategy-option">
           <input type="radio" name="strategy" value="compiled" checked />
           <span class="strategy-card">
             <span class="strategy-heading"><strong>B · Purpose-compiled workflow</strong><span class="arm-label">Proposed</span></span>
-            <p>The same 135M model handles one narrow language task; a client-side Purpose Pack validates and executes the MCP workflow.</p>
-            <span class="strategy-flow">complaint → 135M task → validated plan → MCP tools</span>
+            <p>The same selected model handles one narrow language task; a client-side Purpose Pack validates and executes the MCP workflow.</p>
+            <span class="strategy-flow">complaint → narrow model task → validated plan → MCP tools</span>
           </span>
         </label>
       </div>
       <p class="variable-note"><strong>Independent variable:</strong> direct model autonomy vs. purpose-compiled orchestration. No MCP server changes.</p>
-      <p id="status">Loading model...</p>
-      <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+      <p id="status">Connecting to local Ollama...</p>
       <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
       <label class="field-label" for="input">Civic issue</label>
       <div class="input-row">
@@ -244,7 +254,7 @@
     </div>
 
     <div id="output" class="panel" style="display:none">
-      <h2 id="stepLabel">1. Model extraction (local, offline-capable)</h2>
+      <h2 id="stepLabel">1. Model inference (local Ollama)</h2>
       <pre id="extracted"></pre>
       <h2>2. MCP tool call (real request sent)</h2>
       <pre id="mcpCall"></pre>
@@ -256,7 +266,7 @@
 
     <div class="panel">
       <h2 style="margin-top:0">A/B comparison</h2>
-      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each arm. The latest result for each appears side by side; complaint text is not stored.</p>
+      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each arm with <strong id="comparisonModel">the selected model</strong>. Results are filtered by model; complaint text is not stored.</p>
       <div class="comparison-grid">
         <div class="comparison-card">
           <h3>A · Direct model baseline</h3>
@@ -273,13 +283,13 @@
       <h2>Recent measured runs</h2>
       <div style="overflow-x:auto">
         <table class="history">
-          <thead><tr><th>Strategy</th><th>Status</th><th>Total</th><th>Model</th><th>Model calls</th><th>MCP calls</th></tr></thead>
+          <thead><tr><th>Strategy</th><th>Status</th><th>Category</th><th>Total</th><th>Model work</th><th>Tokens in/out</th><th>Model calls</th><th>MCP calls</th></tr></thead>
           <tbody id="runHistory"></tbody>
         </table>
       </div>
     </div>
 
-    <footer class="note">Sundai Hack 138 · MIT — model runs on-device, MCP call is real and live.</footer>
+    <footer class="note">Sundai Hack 138 · MIT — inference stays in local Ollama; the MCP call is real and live.</footer>
   </div>
 
   <script>
@@ -290,35 +300,24 @@
     }
   </script>
   <script type="module">
-    import { pipeline, env } from './vendor/transformers.min.js'
     import { mcpCallTool, mcpInitialize, mcpListTools } from './mcp-client.js'
     import { compilePurposePack, executePlan, loadPurposePack } from './purpose-compiler.js'
     import { describeDirectFailure, runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
-    import { parseExtraction } from './civic-normalizer.js'
-    import { selectInferenceDevice } from './model-backend.js'
-
-    // Weights are vendored in ./models — no Hugging Face Hub call, ever.
-    env.allowRemoteModels = false
-    env.allowLocalModels = true
-    env.localModelPath = './models/'
-    env.backends.onnx.wasm.wasmPaths = new URL('./vendor/', window.location.href).href
+    import { classifyCategory, parseExtraction } from './civic-normalizer.js'
+    import { DEFAULT_OLLAMA_URL, chatOllama, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, toolCallDecision } from './ollama-client.js'
 
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
     const MCP_SERVER_URL = window.MCP_SERVER_URL || 'https://boston311-mcp-gw.route.qwickforge.com/mcp'
-
-    // SmolLM2-135M, not Qwen2.5-0.5B: same model project 1 landed on after a
-    // real cold-load reliability problem through this same gateway
-    // (~786MB was ~3.5min at measured gateway throughput). 180MB, verified
-    // accurate for structured extraction after prompt tuning below.
-    const MODEL = 'onnx-community/SmolLM2-135M-Instruct-ONNX'
+    const OLLAMA_SERVER_URL = window.OLLAMA_SERVER_URL || DEFAULT_OLLAMA_URL
+    const DEFAULT_MODEL = 'llama3.1:8b'
+    const MODEL_STORAGE_KEY = 'mcp-purpose-compiler-ollama-model-v1'
     const statusEl = document.getElementById('status')
-    const progressEl = document.getElementById('progressBar')
-    const progressTrack = progressEl.parentElement
     const input = document.getElementById('input')
     const go = document.getElementById('go')
     const mic = document.getElementById('mic')
+    const modelSelect = document.getElementById('ollamaModel')
     const strategyOptions = [...document.querySelectorAll('input[name="strategy"]')]
     const purposeStatus = document.getElementById('purposeStatus')
     const PURPOSE_PACK_URL = './purpose-packs/boston-311-related-reports.json'
@@ -326,19 +325,6 @@
     let compiledPlan
     let mcpTools = []
     let mcpReady
-
-    function mb(bytes) { return (bytes / (1024 * 1024)).toFixed(1) }
-
-    function onProgress(p) {
-      if (p.status !== 'progress') return
-      const pct = Math.round(p.progress || 0)
-      progressEl.style.width = pct + '%'
-      statusEl.textContent = p.total
-        ? `Downloading model to this device — ${mb(p.loaded)}MB / ${mb(p.total)}MB (${pct}%). One-time, then 0 network calls.`
-        : `Downloading model to this device — ${pct}%. One-time, then 0 network calls.`
-    }
-
-    let generator
     async function discoverAndCompile() {
       purposeStatus.className = 'purpose-status'
       purposeStatus.textContent = 'Discovering MCP tools and compiling local Purpose Pack...'
@@ -368,27 +354,68 @@
       return mcpReady
     }
 
-    async function load() {
+    function selectedModel() {
+      return modelSelect.value
+    }
+
+    function updateModelContext() {
+      const model = selectedModel()
+      document.getElementById('sameModelValue').textContent = model ? `${model} · local Ollama` : 'No Ollama model selected'
+      document.getElementById('modelBadge').textContent = model ? `⚡ ${model}, local Ollama` : '⚡ Local model via Ollama'
+      document.getElementById('comparisonModel').textContent = model || 'the selected model'
+      renderRunHistory()
+    }
+
+    async function prepareSelectedModel() {
+      const model = selectedModel()
+      if (!model) return
+      go.disabled = true
+      input.disabled = true
+      modelSelect.disabled = true
+      statusEl.className = ''
+      statusEl.textContent = `Loading ${model} into local Ollama memory...`
       try {
-        const requestedBackend = new URLSearchParams(window.location.search).get('backend') || ''
-        const device = await selectInferenceDevice(navigator.gpu, requestedBackend)
-        if (device === 'wasm') {
-          statusEl.textContent = 'WebGPU unavailable, falling back to WASM (slower, still local)...'
-        }
-        generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device, progress_callback: onProgress })
-        progressEl.style.width = '100%'
-        progressTrack.classList.add('done')
-        statusEl.textContent = `Loaded ${MODEL} with ${device.toUpperCase()} (180MB, one-time) — extraction runs with 0 network calls from here.`
+        const preload = await preloadOllamaModel(OLLAMA_SERVER_URL, model)
+        statusEl.className = 'ready'
+        statusEl.textContent = `${model} ready in local Ollama${preload.loadDurationMs ? ` (loaded in ${preload.loadDurationMs} ms)` : ''}. Both arms now start warm.`
         input.disabled = false
         go.disabled = false
       } catch (error) {
-        console.error('Local model failed to load:', error)
-        statusEl.textContent = `Local model failed to load: ${error.message}. Try adding ?backend=wasm to the URL.`
+        statusEl.className = 'error'
+        statusEl.textContent = `Could not load ${model}: ${error.message}`
+      } finally {
+        modelSelect.disabled = false
+      }
+    }
+
+    async function loadModels() {
+      try {
+        document.getElementById('ollamaEndpoint').textContent = OLLAMA_SERVER_URL
+        const models = await listOllamaModels(OLLAMA_SERVER_URL)
+        if (!models.length) throw new Error('Ollama is running but has no installed models. Run: ollama pull llama3.1:8b')
+
+        modelSelect.replaceChildren(...models.map((model) => {
+          const option = document.createElement('option')
+          option.value = model.name
+          option.textContent = ollamaModelLabel(model)
+          return option
+        }))
+        const requested = new URLSearchParams(window.location.search).get('model')
+        const remembered = localStorage.getItem(MODEL_STORAGE_KEY)
+        const preferred = [requested, remembered, DEFAULT_MODEL].find((name) => name && models.some((model) => model.name === name))
+        modelSelect.value = preferred || models[0].name
+        updateModelContext()
+        await prepareSelectedModel()
+      } catch (error) {
+        console.error('Local Ollama unavailable:', error)
+        statusEl.className = 'error'
+        statusEl.textContent = `${error.message}. Start Ollama locally and allow this page's origin if prompted.`
+        modelSelect.replaceChildren(new Option('Local Ollama unavailable', ''))
       }
     }
     mcpReady = discoverAndCompile()
     mcpReady.catch(() => {})
-    load()
+    loadModels()
 
     // Speech input — built into Chrome, no dependency. Degrades to
     // text-only silently if unsupported.
@@ -406,10 +433,10 @@
       mic.style.display = 'none'
     }
 
-    // The compiled path gives the 135M model one narrow task: paraphrase the
+    // The compiled path gives the selected model one narrow task: paraphrase the
     // complaint in a short sentence. JSON shaping, category rules, location
     // extraction, MCP routing, validation, and limits belong to code.
-    // Testing showed this 135M model gets progressively less reliable the
+    // Very small models get progressively less reliable the
     // more fields/decisions it's asked for in one pass — a 2-3 field
     // labeled-line format drifted between runs (copying a few-shot
     // example's text instead of the real input, or fabricating a detail
@@ -476,32 +503,44 @@ Output: rats behind the dumpster on Oak St`
       })
     }
 
-    function generatedReply(output) {
-      const generated = output?.[0]?.generated_text
-      if (Array.isArray(generated)) return generated.at(-1)?.content || ''
-      return String(generated || '')
+    function recordModelStats(metrics, response) {
+      metrics.record({
+        type: 'model_stats',
+        promptTokens: response.promptTokens,
+        outputTokens: response.outputTokens,
+        totalDurationMs: response.totalDurationMs,
+        loadDurationMs: response.loadDurationMs,
+      })
     }
 
-    async function compiledExtraction(rawText) {
-      const out = await generator(
-        [
+    async function compiledExtraction(rawText, model, metrics) {
+      const response = await chatOllama(OLLAMA_SERVER_URL, {
+        model,
+        messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `Input: ${rawText}` },
         ],
-        { max_new_tokens: 40, do_sample: false }
-      )
-      return parseExtraction(generatedReply(out), rawText)
+        options: { num_predict: 40 },
+        keepAlive: '10m',
+      })
+      recordModelStats(metrics, response)
+      return parseExtraction(response.content || response.thinking, rawText)
     }
 
-    async function directGeneration(prompt) {
-      const out = await generator(
-        [
-          { role: 'system', content: 'Select one available MCP tool. Copy its name exactly. Return only the requested three labeled lines; do not explain.' },
+    async function directGeneration(prompt, model, metrics) {
+      const response = await chatOllama(OLLAMA_SERVER_URL, {
+        model,
+        messages: [
+          { role: 'system', content: 'Use exactly one provided MCP tool to satisfy the request. Derive arguments only from the current complaint. Do not answer with an example.' },
           { role: 'user', content: prompt },
         ],
-        { max_new_tokens: 60, do_sample: false }
-      )
-      return generatedReply(out)
+        tools: ollamaTools(mcpTools),
+        options: { num_predict: 80 },
+        keepAlive: '10m',
+      })
+      recordModelStats(metrics, response)
+      const decision = toolCallDecision(response)
+      return decision ? JSON.stringify(decision) : response.content || response.thinking
     }
 
     function renderCallTrace(events) {
@@ -514,12 +553,17 @@ Output: rats behind the dumpster on Oak St`
     function renderRunMetrics(run) {
       const fields = [
         ['Experiment arm', strategyName(run.strategy)],
+        ['Ollama model', run.model],
         ['Status', run.status],
         ['Total', `${run.durationMs} ms`],
-        ['Model', `${run.modelDurationMs} ms`],
+        ['Model work', `${run.modelDurationMs} ms`],
         ['Model calls', run.modelCalls],
         ['MCP calls', run.mcpCalls],
+        ['Prompt tokens', run.promptTokens || 0],
+        ['Output tokens', run.outputTokens || 0],
         ['Category', run.category || '—'],
+        ['Expected category', run.expectedCategory || '—'],
+        ['Category correct', run.categoryCorrect === true ? 'yes' : run.categoryCorrect === false ? 'no' : 'not measured'],
         ['Location match', run.locationMatched === false ? 'citywide fallback' : run.locationMatched === true ? 'yes' : 'not filtered'],
       ]
       if (run.failure) fields.splice(2, 0, ['Outcome detail', run.failure])
@@ -540,12 +584,16 @@ Output: rats behind the dumpster on Oak St`
         return
       }
       const statusClass = run.status === 'passed' ? 'passed' : run.status === 'failed' ? 'failed' : ''
+      const categorySummary = run.failure
+        ? `Failure: ${run.failure}`
+        : `Matched: ${run.category || '—'} · expected: ${run.expectedCategory || '—'}${run.categoryCorrect === true ? ' ✓' : run.categoryCorrect === false ? ' ✗' : ''}`
       target.innerHTML = `
         <span class="outcome-status ${statusClass}">${run.status}</span>
-        <span class="outcome-category">${run.failure ? `Failure: ${run.failure}` : `Matched: ${run.category || '—'}`}</span>
+        <span class="outcome-category">${categorySummary}</span>
         <div class="outcome-stats">
           <div class="outcome-stat"><span>Total</span><strong>${Number(run.durationMs) || 0} ms</strong></div>
           <div class="outcome-stat"><span>Model work</span><strong>${Number(run.modelDurationMs) || 0} ms</strong></div>
+          <div class="outcome-stat"><span>Tokens in/out</span><strong>${Number(run.promptTokens) || 0} / ${Number(run.outputTokens) || 0}</strong></div>
           <div class="outcome-stat"><span>Model calls</span><strong>${Number(run.modelCalls) || 0}</strong></div>
           <div class="outcome-stat"><span>MCP calls</span><strong>${Number(run.mcpCalls) || 0}</strong></div>
         </div>`
@@ -567,16 +615,25 @@ Output: rats behind the dumpster on Oak St`
         reading.textContent = `Latest outcome: A was ${direct.status}; B was ${compiled.status}. Status reflects successful completion of the live MCP workflow.`
         return
       }
+      if (direct.categoryCorrect !== compiled.categoryCorrect && (direct.categoryCorrect !== undefined || compiled.categoryCorrect !== undefined)) {
+        reading.textContent = `Latest quality outcome: A category ${direct.categoryCorrect ? 'matched' : 'did not match'} the expected issue; B category ${compiled.categoryCorrect ? 'matched' : 'did not match'} it.`
+        return
+      }
+      if (direct.categoryCorrect === false && compiled.categoryCorrect === false) {
+        reading.textContent = 'Latest quality outcome: both arms completed, but neither matched the expected issue category.'
+        return
+      }
       const difference = Math.abs(direct.durationMs - compiled.durationMs)
       const faster = direct.durationMs <= compiled.durationMs ? 'A · Direct baseline' : 'B · Purpose compiled'
       reading.textContent = `Latest outcome: both arms were ${direct.status}. ${faster} completed ${difference} ms faster; compare calls and execution traces before drawing a quality conclusion.`
     }
 
     function renderRunHistory() {
-      const rows = loadRuns().slice(0, 8)
+      const model = selectedModel()
+      const rows = model ? loadRuns().filter((run) => run.model === model).slice(0, 8) : []
       document.getElementById('runHistory').innerHTML = rows.length
-        ? rows.map((run) => `<tr><td>${strategyName(run.strategy)}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
-        : '<tr><td colspan="6">No measured runs yet.</td></tr>'
+        ? rows.map((run) => `<tr><td>${strategyName(run.strategy)}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.categoryCorrect === true ? '✓' : run.categoryCorrect === false ? '✗' : '—'}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.promptTokens || 0}/${run.outputTokens || 0}</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
+        : `<tr><td colspan="8">${model ? `No measured runs for ${model} yet.` : 'Select an Ollama model to compare runs.'}</td></tr>`
       renderComparison(rows)
     }
 
@@ -605,13 +662,21 @@ Output: rats behind the dumpster on Oak St`
       updatePurposeStatus()
     }
     strategyOptions.forEach((option) => option.addEventListener('change', updateSelectedArm))
+    modelSelect.addEventListener('change', async () => {
+      localStorage.setItem(MODEL_STORAGE_KEY, selectedModel())
+      updateModelContext()
+      await prepareSelectedModel()
+    })
 
     go.onclick = async () => {
       const text = input.value.trim()
       if (!text) return
       go.disabled = true
+      modelSelect.disabled = true
       const selectedStrategyValue = selectedStrategy()
-      const metrics = createRunMetrics(selectedStrategyValue, MODEL)
+      const runModel = selectedModel()
+      const expectedCategory = classifyCategory(text)
+      const metrics = createRunMetrics(selectedStrategyValue, runModel)
       go.textContent = selectedStrategyValue === 'compiled' ? 'Running B · Purpose-compiled workflow...' : 'Running A · Direct model baseline...'
       document.getElementById('output').style.display = 'block'
       document.getElementById('stepLabel').textContent = selectedStrategyValue === 'compiled'
@@ -628,19 +693,19 @@ Output: rats behind the dumpster on Oak St`
           execution = await executePlan(
             compiledPlan,
             {
-              model: async (_step, state) => compiledExtraction(state.input.complaint),
+              model: async (_step, state) => compiledExtraction(state.input.complaint, runModel, metrics),
               mcp: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
             },
             { complaint: text },
             (event) => metrics.record(event)
           )
-          document.getElementById('stepLabel').textContent = `1. Purpose-compiled extraction — ${MODEL} (local)`
+          document.getElementById('stepLabel').textContent = `1. Purpose-compiled extraction — ${runModel} (local Ollama)`
           document.getElementById('extracted').textContent = JSON.stringify(execution.state.extract, null, 2)
         } else {
           execution = await runDirectAgent({
             complaint: text,
             tools: mcpTools,
-            generate: directGeneration,
+            generate: (prompt) => directGeneration(prompt, runModel, metrics),
             callTool: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
             maxSteps: 2,
             onEvent: (event) => {
@@ -650,15 +715,18 @@ Output: rats behind the dumpster on Oak St`
               }
             },
           })
-          document.getElementById('stepLabel').textContent = `1. Direct agent decisions — ${MODEL} (raw tools/list)`
+          document.getElementById('stepLabel').textContent = `1. Direct agent decisions — ${runModel} (local Ollama, raw tools/list)`
           document.getElementById('extracted').textContent = JSON.stringify(execution.decisions, null, 2)
         }
 
         renderCallTrace(metrics.events)
         renderResult(execution.result)
+        const category = execution.result?.matched?.service_name
         const run = metrics.finish({
           status: 'passed',
-          category: execution.result?.matched?.service_name,
+          category,
+          expectedCategory,
+          categoryCorrect: category?.toLowerCase() === expectedCategory.toLowerCase(),
           locationMatched: execution.result?.locationMatched,
         })
         renderRunMetrics(run)
@@ -668,7 +736,13 @@ Output: rats behind the dumpster on Oak St`
         if (selectedStrategyValue === 'compiled' && hadMcpCall && /MCP|fetch|network|timed out|Failed to fetch/i.test(err.message)) {
           console.warn('MCP call failed, using cached fallback:', err)
           renderResult(CANNED_FALLBACK, true)
-          renderRunMetrics(metrics.finish({ status: 'cached-fallback', category: CANNED_FALLBACK.matched.service_name }))
+          const category = CANNED_FALLBACK.matched.service_name
+          renderRunMetrics(metrics.finish({
+            status: 'cached-fallback',
+            category,
+            expectedCategory,
+            categoryCorrect: category.toLowerCase() === expectedCategory.toLowerCase(),
+          }))
         } else {
           const report = document.createElement('div')
           report.className = 'report'
@@ -679,7 +753,7 @@ Output: rats behind the dumpster on Oak St`
             heading.textContent = 'Arm A measured outcome: failed'
             const explanation = document.createElement('div')
             explanation.className = 'addr'
-            explanation.textContent = `The 135M model produced an ${failure}. This is a baseline result, not an MCP server error.`
+            explanation.textContent = `${runModel} produced an ${failure}. This is a baseline result, not an MCP server error.`
             const detail = document.createElement('div')
             detail.className = 'meta'
             detail.textContent = err.message
@@ -688,10 +762,11 @@ Output: rats behind the dumpster on Oak St`
             report.textContent = `Error: ${err.message}`
           }
           document.getElementById('mcpResult').appendChild(report)
-          renderRunMetrics(metrics.finish({ status: 'failed', failure, error: err.message }))
+          renderRunMetrics(metrics.finish({ status: 'failed', failure, error: err.message, expectedCategory }))
         }
       } finally {
         go.disabled = false
+        modelSelect.disabled = false
         updateRunButton()
       }
     }

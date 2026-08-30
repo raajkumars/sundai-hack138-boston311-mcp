@@ -16,7 +16,7 @@ export function buildDirectAgentPrompt(tools, complaint, observation) {
   const observed = observation
     ? `\nPrevious tool result:\n${JSON.stringify(observation).slice(0, 700)}\nChoose the next tool needed to finish.`
     : ''
-  return `Find recent reports related to the complaint using one MCP tool.\n\nAVAILABLE TOOL NAMES (copy one exactly):\n${availableNames}\n\nTOOL DESCRIPTIONS:\n${toolSummary(tools)}\n\nExample:\nComplaint: Broken traffic light at Beacon and Arlington\nTOOL: query_recent\nCATEGORY: broken traffic light\nLOCATION: Beacon and Arlington\n\nComplaint: ${complaint}${observed}\n\nReply with exactly three labeled lines and no explanation.`
+  return `Find recent reports related to this complaint using one MCP tool.\n\nAVAILABLE TOOL NAMES (copy one exactly):\n${availableNames}\n\nTOOL DESCRIPTIONS:\n${toolSummary(tools)}\n\nCOMPLAINT:\n${complaint}${observed}\n\nChoose exactly one available tool. Tool arguments must describe this complaint, not text from the tool descriptions. Prefer a native tool call. If native tool calling is unavailable, reply with only three lines labeled TOOL, CATEGORY, and LOCATION.`
 }
 
 export function parseDirectDecision(text, tools) {

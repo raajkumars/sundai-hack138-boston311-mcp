@@ -21,6 +21,9 @@ export function createRunMetrics(strategy, model) {
         modelDurationMs: Math.round(events
           .filter((event) => (event.type === 'step_completed' && event.executor === 'model') || event.type === 'direct_model_call')
           .reduce((total, event) => total + (event.durationMs || 0), 0)),
+        promptTokens: events.filter((event) => event.type === 'model_stats').reduce((total, event) => total + (event.promptTokens || 0), 0),
+        outputTokens: events.filter((event) => event.type === 'model_stats').reduce((total, event) => total + (event.outputTokens || 0), 0),
+        modelLoadDurationMs: events.filter((event) => event.type === 'model_stats').reduce((total, event) => total + (event.loadDurationMs || 0), 0),
         ...extra,
       }
       saveRun(completed)

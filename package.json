@@ -6,7 +6,6 @@
   "description": "Client-side MCP Purpose Compiler reference application using Boston 311",
   "scripts": {
     "test": "node --test",
-    "setup:assets": "bash scripts/setup-assets.sh",
     "serve": "python3 -m http.server 8899"
   }
 }

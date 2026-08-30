@@ -2,13 +2,15 @@
 
 Sundai Hack 138: **Small Models, Big Applications**.
 
-This project demonstrates that a very small on-device model can complete a
-real MCP-backed task more reliably when the application's purpose is compiled
-into a constrained workflow instead of asking the model to reason about the
-protocol and choose every tool itself.
+This project compares how the same local Ollama model performs on a real
+MCP-backed task with and without purpose-compiled orchestration. The model is
+selected in the UI from the models installed in the visitor's local Ollama
+instance.
 
 The application is read-only. It never files Boston 311 requests. A hosted PWA
-is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>.
+shell is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>, but
+inference still requires Ollama on the visitor's machine and permission for the
+page origin to access it. Running the PWA locally is the simplest demo setup.
 
 ## Live URLs
 
@@ -22,9 +24,9 @@ No local MCP process is required.
 
 ## What it demonstrates
 
-The browser runs SmolLM2-135M-Instruct locally with Transformers.js. It connects
-to an existing MCP server that exposes two tools backed by Boston's live Open311
-API:
+The browser discovers installed models through the local Ollama API and sends
+inference requests only to that local service. It connects separately to an
+existing MCP server that exposes two tools backed by Boston's live Open311 API:
 
 - `lookup_service({ category })`
 - `query_recent({ category, location? })`
@@ -36,11 +38,13 @@ requests.
 Two strategies are available in the UI:
 
 1. **Purpose compiled** — a local Purpose Pack declares the validated workflow.
-   The small model performs one narrow language task; deterministic code owns
+   The selected model performs one narrow language task; deterministic code owns
    category rules, MCP routing, argument validation, call limits, and result
    handling.
-2. **Direct MCP agent** — the same model receives raw `tools/list` descriptions
-   and chooses tool calls itself. This is the comparison baseline.
+2. **Direct MCP agent** — the same selected model receives raw `tools/list`
+   descriptions and chooses tool calls itself. Ollama-native tool calls are used
+   when the model supplies them; text output parsing is the fallback. This is the
+   comparison baseline.
 
 Every run records wall time, model time, model calls, MCP calls, status, and
 location fallback behavior in browser-local storage. Complaint text is not
@@ -61,7 +65,7 @@ Existing MCP server (unchanged)
           +---------+----------+
           |                    |
           v                    v
-   on-device model      deterministic MCP calls
+ local Ollama model     deterministic MCP calls
           |                    |
           +---------+----------+
                     v
@@ -76,23 +80,22 @@ The generic compiler is [`purpose-compiler.js`](purpose-compiler.js).
 
 - Node.js 18 or newer
 - Python 3 (used only as a no-build static file server)
-- `curl`
-- Chrome or another browser with WebGPU preferred; WASM is the fallback
-- About 200 MB of disk space for browser model assets
+- A running local [Ollama](https://ollama.com/) service
+- At least one model installed in Ollama
+- A browser allowed to access `http://127.0.0.1:11434`
 
 ## First-time setup
 
-The model and Transformers.js assets are intentionally ignored by Git. Download
-the pinned public artifacts once:
+Install or choose at least one local model. For example:
 
 ```bash
-cd /workspace/boston-311-hack
-npm run setup:assets
+ollama pull llama3.1:8b
 ```
 
-The script is idempotent and pins Transformers.js, ONNX Runtime Web, and the
-model repository revision. Browser inference makes no model-host request after
-these assets are installed.
+The app defaults to `llama3.1:8b` when it is installed; otherwise it selects the
+first model returned by Ollama. The dropdown exposes every model returned by
+`GET /api/tags`. On selection, the app preloads that model and keeps it resident
+for ten minutes so the first experiment arm does not pay a cold-load penalty.
 
 ## Start locally
 
@@ -103,20 +106,24 @@ is required:
 https://boston311-mcp-gw.route.qwickforge.com/mcp
 ```
 
-Start only the static PWA:
+Make sure Ollama is running, then start the static PWA:
 
 ```bash
 cd /workspace/boston-311-hack
 npm run serve
 ```
 
-Open <http://localhost:8899>. The first page load reads the model from the local
-static server and caches the application shell. Allow microphone access only if
-you want speech input.
+Open <http://localhost:8899>. The model dropdown is populated from
+<http://127.0.0.1:11434/api/tags>. Allow microphone access only if you want
+speech input.
 
-The app probes for a usable WebGPU adapter before creating the model pipeline
-and selects local WASM inference when no adapter is available. To force the
-portable path, open <http://localhost:8899/?backend=wasm>.
+The selected model can also be requested with a query parameter, for example
+<http://localhost:8899/?model=llama3.2%3A1b>. A deployment can set
+`window.OLLAMA_SERVER_URL` before the module script executes to use a different
+local Ollama address.
+
+Ollama permits localhost browser origins by default. A non-local hosted PWA may
+require adding its exact origin to `OLLAMA_ORIGINS` and restarting Ollama.
 
 The public deployment permits browser CORS and supports MCP protocol version
 `2025-06-18`. A different deployment can still set `window.MCP_SERVER_URL`
@@ -130,9 +137,11 @@ Use the same complaint with both selections, for example:
 There's a car blocking the bike lane on Main and Second.
 ```
 
-The run history compares observable execution results. Purpose-compiled mode is
-the reliable demo path; direct-agent mode is intentionally allowed to fail when
-the 135M model cannot produce a valid tool decision.
+Run history and the A/B cards are filtered to the model currently selected in
+the dropdown, preventing accidental comparison of different models. In
+addition to wall time and call counts, each run records Ollama prompt and output
+token counts. Direct-agent mode remains allowed to fail when the selected model
+cannot produce a valid tool decision.
 
 For reproducibility, deterministic category and location behavior is checked
 against [`tests/fixtures/civic-issues.json`](tests/fixtures/civic-issues.json).
@@ -152,6 +161,7 @@ The tests cover:
 - Fail-closed behavior for missing tools and incompatible arguments
 - Workflow reference resolution and call limits
 - Direct-agent output parsing
+- Ollama model discovery, request shaping, tool-call conversion, and metrics
 - Deterministic civic-routing benchmark cases
 
 ## Repository layout
@@ -159,22 +169,23 @@ The tests cover:
 ```text
 index.html                         PWA and comparison interface
 mcp-client.js                      Minimal streamable-HTTP MCP client
+ollama-client.js                   Local model discovery and chat adapter
 purpose-compiler.js                Generic client-side compiler/executor
 direct-agent.js                    Raw tools/list comparison baseline
 civic-normalizer.js                Testable Boston-specific normalization
 run-metrics.js                     Browser-local execution measurements
 purpose-packs/                     Portable application policy
 mcp-server/                        Existing read-only Boston 311 MCP server
-scripts/setup-assets.sh            Reproducible ignored-asset download
 tests/                              Compiler and benchmark-fixture tests
 ```
 
 ## Scope and claims
 
-- The local model does language processing; application code performs MCP calls.
+- The selected Ollama model does language processing; application code performs
+  MCP calls.
 - Purpose Packs are client-side policy. MCP servers do not need new endpoints or
   code to support them.
 - The live demo uses real Boston Open311 data. A clearly labeled cached example
   is shown only when a live MCP call times out.
-- The project measures orchestration quality; it does not claim the 135M model
-  has native or generally reliable MCP tool-calling ability.
+- The project measures orchestration quality across locally installed models;
+  it does not assume that every Ollama model supports reliable native tool use.
