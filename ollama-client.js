@@ -1,3 +1,9 @@
+// Kept here ONLY as a test fixture — Node's ESM loader can't import a
+// bare https: URL without a custom loader, and tests/purpose-compiler.test.js
+// needs a local import. The canonical source, and what the browser app
+// actually loads at runtime, is qwickapps/jsai (backend-selector.js pulls
+// this in from there via jsDelivr). Keep this file in sync with jsai's
+// copy by hand; don't extend it here — extend it in jsai instead.
 export const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434'
 
 export class OllamaClientError extends Error {

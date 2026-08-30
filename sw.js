@@ -14,12 +14,11 @@
 //
 // CACHE_NAME is bumped on every shell change to evict previously-cached
 // entries for anyone (Ted, @raaj, a judge) who visited an earlier build.
-const CACHE_NAME = 'sundai-311-mcp-v3'
+const CACHE_NAME = 'sundai-311-mcp-v4'
 const SHELL = [
   'index.html',
   'manifest.json',
   'mcp-client.js',
-  'ollama-client.js',
   'purpose-compiler.js',
   'direct-agent.js',
   'run-metrics.js',

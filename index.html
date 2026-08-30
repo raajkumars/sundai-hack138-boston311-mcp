@@ -326,8 +326,15 @@
     import { describeDirectFailure, parseDirectDecision, runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
     import { classifyCategory, parseExtraction } from './civic-normalizer.js'
-    import { DEFAULT_OLLAMA_URL, directDecisionFormat, listOllamaModels, ollamaModelLabel, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from './ollama-client.js'
-    import * as backend from './backend-selector.js'
+    // Backend resolver lives in its own product repo (qwickapps/jsai), not
+    // in this hackathon demo repo — see qwickapps/jsai for why. Pinned to
+    // an exact commit SHA, not @main: jsDelivr's branch-tracking GitHub
+    // mirror lags real pushes by an unpredictable amount (confirmed live —
+    // GitHub had the fix, jsDelivr's @main still served the old file
+    // minutes later), while SHA-pinned URLs are immutable and fetch fresh
+    // immediately. Bump this SHA by hand after any jsai change.
+    import { DEFAULT_OLLAMA_URL, directDecisionFormat, listOllamaModels, ollamaModelLabel, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@8ea03a2ef57031b4f8ce03a087a85c14020e7bf7/ollama-client.js'
+    import * as backend from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@8ea03a2ef57031b4f8ce03a087a85c14020e7bf7/backend-selector.js'
 
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
