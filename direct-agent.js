@@ -12,10 +12,11 @@ function toolSummary(tools) {
 }
 
 export function buildDirectAgentPrompt(tools, complaint, observation) {
+  const availableNames = tools.map((tool) => tool.name).join(' | ')
   const observed = observation
-    ? `\nThe previous tool returned:\n${JSON.stringify(observation).slice(0, 1200)}\nChoose the next tool needed to finish.`
+    ? `\nPrevious tool result:\n${JSON.stringify(observation).slice(0, 700)}\nChoose the next tool needed to finish.`
     : ''
-  return `Use these MCP tools to find recent reports related to the complaint.\n\n${toolSummary(tools)}\n\nComplaint: ${complaint}${observed}\n\nOutput exactly three lines:\nTOOL: tool_name\nCATEGORY: short category\nLOCATION: location from complaint, or NONE`
+  return `Find recent reports related to the complaint using one MCP tool.\n\nAVAILABLE TOOL NAMES (copy one exactly):\n${availableNames}\n\nTOOL DESCRIPTIONS:\n${toolSummary(tools)}\n\nExample:\nComplaint: Broken traffic light at Beacon and Arlington\nTOOL: query_recent\nCATEGORY: broken traffic light\nLOCATION: Beacon and Arlington\n\nComplaint: ${complaint}${observed}\n\nReply with exactly three labeled lines and no explanation.`
 }
 
 export function parseDirectDecision(text, tools) {
@@ -31,14 +32,37 @@ export function parseDirectDecision(text, tools) {
     }
   }
 
-  const tool = text.match(/^\s*TOOL:\s*([^\n]+)/im)?.[1]?.trim()
-  const category = text.match(/^\s*CATEGORY:\s*([^\n]+)/im)?.[1]?.trim()
-  const location = text.match(/^\s*LOCATION:\s*([^\n]+)/im)?.[1]?.trim()
-  if (!tool || !names.has(tool)) throw new Error(`Direct agent did not select an available MCP tool: ${tool || '(missing)'}`)
+  const labeledName = text.match(/^\s*TOOL:\s*([^\s(\n]+)/im)?.[1]?.trim()
+  const calledTool = tools.find((candidate) => {
+    const escapedName = candidate.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`\\b${escapedName}\\s*\\(`, 'i').test(text)
+  })
+  const selectedTool = tools.find((candidate) => candidate.name.toLowerCase() === labeledName?.toLowerCase()) || calledTool
+  const tool = selectedTool?.name
+
+  const argumentText = tool
+    ? text.match(new RegExp(`\\b${tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\(([^)]*)`, 'i'))?.[1] || text
+    : text
+  const readArgument = (label) => text
+    .match(new RegExp(`^\\s*${label}\\s*:\\s*["']?([^"'\\n,]+)`, 'im'))?.[1]?.trim()
+    || argumentText.match(new RegExp(`["']?${label}["']?\\s*[:=]\\s*["']?([^"'\\n,)]+)`, 'i'))?.[1]?.trim()
+  const category = readArgument('category')
+    || argumentText.match(/^\s*["']([^"']+)/)?.[1]?.trim()
+  const location = readArgument('location')
+
+  if (!tool || !names.has(tool)) throw new Error(`Direct agent did not select an available MCP tool: ${labeledName || '(missing)'}`)
   if (!category) throw new Error('Direct agent omitted CATEGORY')
   const args = { category }
   if (tool === 'query_recent' && location && !/^none$/i.test(location)) args.location = location
   return { name: tool, arguments: args }
+}
+
+export function describeDirectFailure(error) {
+  const message = error?.message || String(error)
+  if (/did not select an available MCP tool/i.test(message)) return 'invalid or missing MCP tool selection'
+  if (/omitted CATEGORY|missing required field|arguments/i.test(message)) return 'invalid or missing tool arguments'
+  if (/did not call query_recent/i.test(message)) return 'workflow did not reach query_recent'
+  return 'direct workflow execution failed'
 }
 
 export async function runDirectAgent({ complaint, tools, generate, callTool, maxSteps = 2, onEvent = () => {} }) {

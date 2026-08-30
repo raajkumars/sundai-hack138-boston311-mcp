@@ -4,7 +4,7 @@ import test from 'node:test'
 
 import { classifyCategory, locationOf } from '../civic-normalizer.js'
 import { compilePurposePack, executePlan, PurposeCompilerError } from '../purpose-compiler.js'
-import { parseDirectDecision, runDirectAgent } from '../direct-agent.js'
+import { buildDirectAgentPrompt, describeDirectFailure, parseDirectDecision, runDirectAgent } from '../direct-agent.js'
 import { selectInferenceDevice } from '../model-backend.js'
 
 const root = new URL('../', import.meta.url)
@@ -66,6 +66,37 @@ test('parses direct-agent labeled tool decisions', () => {
   assert.deepEqual(
     parseDirectDecision('TOOL: query_recent\nCATEGORY: Illegal Parking\nLOCATION: Main St', tools),
     { name: 'query_recent', arguments: { category: 'Illegal Parking', location: 'Main St' } }
+  )
+})
+
+test('parses a small model function-style tool decision with surrounding prose', () => {
+  assert.deepEqual(
+    parseDirectDecision(
+      'To use the MCP tools, I would call:\nlookup_service(CATEGORY: "CIVIL INCIDENT", "Bike Lane")',
+      tools
+    ),
+    { name: 'lookup_service', arguments: { category: 'CIVIL INCIDENT' } }
+  )
+})
+
+test('parses function-style query arguments and canonicalizes the tool name', () => {
+  assert.deepEqual(
+    parseDirectDecision('QUERY_RECENT(category="Illegal Parking", location="Main St")', tools),
+    { name: 'query_recent', arguments: { category: 'Illegal Parking', location: 'Main St' } }
+  )
+})
+
+test('direct-agent prompt makes the exact available names salient', () => {
+  const prompt = buildDirectAgentPrompt(tools, 'blocked lane')
+  assert.match(prompt, /AVAILABLE TOOL NAMES \(copy one exactly\):\nlookup_service \| query_recent/)
+  assert.match(prompt, /TOOL: query_recent\nCATEGORY: broken traffic light\nLOCATION: Beacon and Arlington/)
+  assert.match(prompt, /Reply with exactly three labeled lines and no explanation/)
+})
+
+test('classifies a missing direct tool choice as a measured baseline failure', () => {
+  assert.equal(
+    describeDirectFailure(new Error('Direct agent did not select an available MCP tool: (missing)')),
+    'invalid or missing MCP tool selection'
   )
 })
 

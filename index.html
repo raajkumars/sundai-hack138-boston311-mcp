@@ -293,7 +293,7 @@
     import { pipeline, env } from './vendor/transformers.min.js'
     import { mcpCallTool, mcpInitialize, mcpListTools } from './mcp-client.js'
     import { compilePurposePack, executePlan, loadPurposePack } from './purpose-compiler.js'
-    import { runDirectAgent } from './direct-agent.js'
+    import { describeDirectFailure, runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
     import { parseExtraction } from './civic-normalizer.js'
     import { selectInferenceDevice } from './model-backend.js'
@@ -496,10 +496,10 @@ Output: rats behind the dumpster on Oak St`
     async function directGeneration(prompt) {
       const out = await generator(
         [
-          { role: 'system', content: 'Act as an MCP tool-using agent. Follow the requested output format exactly.' },
+          { role: 'system', content: 'Select one available MCP tool. Copy its name exactly. Return only the requested three labeled lines; do not explain.' },
           { role: 'user', content: prompt },
         ],
-        { max_new_tokens: 40, do_sample: false }
+        { max_new_tokens: 60, do_sample: false }
       )
       return generatedReply(out)
     }
@@ -522,6 +522,7 @@ Output: rats behind the dumpster on Oak St`
         ['Category', run.category || '—'],
         ['Location match', run.locationMatched === false ? 'citywide fallback' : run.locationMatched === true ? 'yes' : 'not filtered'],
       ]
+      if (run.failure) fields.splice(2, 0, ['Outcome detail', run.failure])
       document.getElementById('runMetrics').innerHTML = fields.map(([label, value]) =>
         `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`
       ).join('')
@@ -541,7 +542,7 @@ Output: rats behind the dumpster on Oak St`
       const statusClass = run.status === 'passed' ? 'passed' : run.status === 'failed' ? 'failed' : ''
       target.innerHTML = `
         <span class="outcome-status ${statusClass}">${run.status}</span>
-        <span class="outcome-category">Matched: ${run.category || '—'}</span>
+        <span class="outcome-category">${run.failure ? `Failure: ${run.failure}` : `Matched: ${run.category || '—'}`}</span>
         <div class="outcome-stats">
           <div class="outcome-stat"><span>Total</span><strong>${Number(run.durationMs) || 0} ms</strong></div>
           <div class="outcome-stat"><span>Model work</span><strong>${Number(run.modelDurationMs) || 0} ms</strong></div>
@@ -671,9 +672,23 @@ Output: rats behind the dumpster on Oak St`
         } else {
           const report = document.createElement('div')
           report.className = 'report'
-          report.textContent = `Error: ${err.message}`
+          let failure
+          if (selectedStrategyValue === 'direct') {
+            failure = describeDirectFailure(err)
+            const heading = document.createElement('strong')
+            heading.textContent = 'Arm A measured outcome: failed'
+            const explanation = document.createElement('div')
+            explanation.className = 'addr'
+            explanation.textContent = `The 135M model produced an ${failure}. This is a baseline result, not an MCP server error.`
+            const detail = document.createElement('div')
+            detail.className = 'meta'
+            detail.textContent = err.message
+            report.append(heading, explanation, detail)
+          } else {
+            report.textContent = `Error: ${err.message}`
+          }
           document.getElementById('mcpResult').appendChild(report)
-          renderRunMetrics(metrics.finish({ status: 'failed', error: err.message }))
+          renderRunMetrics(metrics.finish({ status: 'failed', failure, error: err.message }))
         }
       } finally {
         go.disabled = false
