@@ -344,6 +344,12 @@
             <option value="">Detecting available backends...</option>
           </select>
           <p class="model-note" id="backendNote">Checking WebGPU and local Ollama...</p>
+          <label class="field-label" for="ollamaUrlInput" style="margin-top:10px">Local Ollama server URL</label>
+          <div style="display:flex;gap:8px">
+            <input id="ollamaUrlInput" type="text" style="flex:1;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
+            <button id="ollamaUrlRetry" type="button">Retry</button>
+          </div>
+          <p class="model-note">Not detected? This page's origin usually isn't <code>localhost</code>, and Ollama only accepts browser requests from origins it's told to trust. Entering a different URL alone won't fix that — on the machine running Ollama, set <code>OLLAMA_ORIGINS</code> to include this page's origin (<code id="pageOrigin"></code>) and restart Ollama, then click Retry.</p>
         </div>
         <div id="byokFields" class="model-picker" style="display:none">
           <label class="field-label" for="byokProvider">Provider</label>
@@ -555,7 +561,8 @@
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
     const MCP_SERVER_URL = window.MCP_SERVER_URL || 'https://boston311-mcp-gw.route.qwickforge.com/mcp'
-    const OLLAMA_SERVER_URL = window.OLLAMA_SERVER_URL || DEFAULT_OLLAMA_URL
+    const OLLAMA_URL_STORAGE_KEY = 'mcp-purpose-compiler-ollama-url-v1'
+    let OLLAMA_SERVER_URL = window.OLLAMA_SERVER_URL || localStorage.getItem(OLLAMA_URL_STORAGE_KEY) || DEFAULT_OLLAMA_URL
     const DEFAULT_MODEL = 'llama3.1:8b'
     const MODEL_STORAGE_KEY = 'mcp-purpose-compiler-ollama-model-v1'
     const PURPOSE_PACK_STORAGE_KEY = 'mcp-purpose-compiler-purpose-pack-v1'
@@ -567,6 +574,9 @@
     const modelSelect = document.getElementById('ollamaModel')
     const backendTierSelect = document.getElementById('backendTier')
     const backendNote = document.getElementById('backendNote')
+    const ollamaUrlInput = document.getElementById('ollamaUrlInput')
+    const ollamaUrlRetry = document.getElementById('ollamaUrlRetry')
+    document.getElementById('pageOrigin').textContent = window.location.origin
     const ollamaModelPicker = document.getElementById('ollamaModelPicker')
     const byokFields = document.getElementById('byokFields')
     const byokProviderSelect = document.getElementById('byokProvider')
@@ -843,6 +853,20 @@
       backendTierSelect.disabled = false
       backendNote.textContent = `WebGPU: ${backendDetection.webgpu.reason}. Ollama: ${backendDetection.ollama.reason}.`
     }
+
+    ollamaUrlInput.value = OLLAMA_SERVER_URL
+    ollamaUrlRetry.addEventListener('click', () => {
+      const url = ollamaUrlInput.value.trim()
+      if (!url) return
+      OLLAMA_SERVER_URL = url
+      localStorage.setItem(OLLAMA_URL_STORAGE_KEY, url)
+      ollamaUrlRetry.disabled = true
+      ollamaUrlRetry.textContent = 'Checking...'
+      initBackend().finally(() => {
+        ollamaUrlRetry.disabled = false
+        ollamaUrlRetry.textContent = 'Retry'
+      })
+    })
 
     async function initBackend() {
       backendDetection = await backend.detectBackends(OLLAMA_SERVER_URL)
