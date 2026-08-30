@@ -27,7 +27,7 @@
       var(--bg-0);
     color: var(--text-0); margin: 0; padding: 56px 20px 80px; min-height: 100vh; line-height: 1.55;
   }
-  .page { max-width: 720px; margin: 0 auto; }
+  .page { max-width: 860px; margin: 0 auto; }
   .kicker {
     display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
     letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent-1);
@@ -79,11 +79,43 @@
   textarea::placeholder { color: var(--text-2); }
   textarea:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
   textarea:disabled { opacity: 0.45; cursor: not-allowed; }
-  select {
-    width: 100%; font: inherit; font-size: 14px; color: var(--text-0); background: var(--bg-0);
-    border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; margin-bottom: 4px;
+  .experiment-question {
+    font-size: 18px; line-height: 1.35; color: var(--text-0); margin: 0 0 14px;
   }
-  select:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .controlled-variables {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 18px;
+  }
+  .controlled-variable {
+    background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 9px; padding: 9px 11px;
+  }
+  .controlled-variable span {
+    display: block; color: var(--text-2); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .controlled-variable strong { display: block; color: var(--text-1); font-size: 12.5px; margin-top: 2px; }
+  .strategy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .strategy-option { display: block; position: relative; cursor: pointer; }
+  .strategy-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .strategy-card {
+    display: block; height: 100%; background: var(--bg-0); border: 1px solid var(--border); border-radius: 11px;
+    padding: 15px; transition: border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .strategy-option:hover .strategy-card { transform: translateY(-1px); border-color: #3b4568; }
+  .strategy-option input:focus-visible + .strategy-card { box-shadow: 0 0 0 3px var(--accent-glow); }
+  .strategy-option input:checked + .strategy-card {
+    border-color: var(--accent-0); box-shadow: inset 0 0 0 1px var(--accent-0), 0 0 24px -12px var(--accent-glow);
+  }
+  .strategy-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .strategy-heading strong { font-size: 15px; color: var(--text-0); }
+  .arm-label {
+    color: var(--accent-1); border: 1px solid rgba(167, 139, 250, .35); border-radius: 999px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .07em; padding: 3px 7px; text-transform: uppercase;
+  }
+  .strategy-card p { color: var(--text-1); font-size: 12.5px; line-height: 1.45; margin: 8px 0 0; }
+  .strategy-flow { display: block; color: var(--text-2); font: 10.5px/1.5 'SF Mono', ui-monospace, Menlo, monospace; margin-top: 9px; }
+  .variable-note {
+    color: var(--text-1); font-size: 12.5px; margin: 12px 0 18px; padding-left: 12px;
+    border-left: 2px solid var(--accent-0);
+  }
   button {
     font-family: inherit; font-size: 15px; font-weight: 600; color: #0b0d14;
     background: linear-gradient(135deg, var(--accent-0), var(--accent-1)); border: none;
@@ -129,7 +161,28 @@
   .history th { color: var(--text-2); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
   .history td { color: var(--text-1); }
   .history .passed { color: var(--ok); }
-  @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .comparison-card { background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 11px; padding: 15px; }
+  .comparison-card.compiled { border-color: rgba(124, 140, 255, .4); }
+  .comparison-card h3 { font-size: 14px; margin: 0; color: var(--text-0); }
+  .comparison-card .description { color: var(--text-2); font-size: 11.5px; margin: 3px 0 12px; }
+  .outcome { color: var(--text-1); font-size: 12.5px; }
+  .outcome-status { display: inline-block; font-weight: 700; margin-bottom: 7px; text-transform: capitalize; }
+  .outcome-status.passed { color: var(--ok); }
+  .outcome-status.failed { color: #fca5a5; }
+  .outcome-category { color: var(--text-2); display: block; font-size: 11px; margin: -2px 0 9px; }
+  .outcome-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+  .outcome-stat span { color: var(--text-2); display: block; font-size: 9px; text-transform: uppercase; }
+  .outcome-stat strong { color: var(--text-1); display: block; font-size: 12px; margin-top: 1px; }
+  .comparison-reading {
+    background: rgba(124, 140, 255, .08); border: 1px solid rgba(124, 140, 255, .22);
+    border-radius: 9px; color: var(--text-1); font-size: 12.5px; margin: 12px 0 16px; padding: 10px 12px;
+  }
+  @media (max-width: 600px) {
+    .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .strategy-grid, .comparison-grid { grid-template-columns: 1fr; }
+    .controlled-variables { grid-template-columns: 1fr; }
+  }
   #output { animation: fadeIn 0.45s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -139,12 +192,11 @@
 <body>
   <div class="page">
     <span class="kicker">MCP Purpose Compiler</span>
-    <h1>Compile purpose, not protocol</h1>
+    <h1>Can orchestration make a 135M model better at MCP?</h1>
     <p class="lede">
-      <strong>Describe a civic issue — speak or type.</strong>
-      A client-side Purpose Pack gives a tiny local model one bounded language
-      task, then validated code executes the required workflow through an
-      unchanged MCP server against Boston's live 311 system.
+      <strong>This demo is a controlled comparison.</strong> Give the same civic
+      issue to the same tiny local model and the same live Boston 311 MCP server.
+      Change only how the work is orchestrated.
     </p>
 
     <div class="badge-row">
@@ -155,20 +207,40 @@
     </div>
 
     <div class="panel">
+      <p class="experiment-question"><strong>Choose an experiment arm</strong></p>
+      <div class="controlled-variables" aria-label="Controlled variables">
+        <div class="controlled-variable"><span>Same model</span><strong>SmolLM2 · 135M · local</strong></div>
+        <div class="controlled-variable"><span>Same task</span><strong>Find related 311 reports</strong></div>
+        <div class="controlled-variable"><span>Same tools</span><strong>Live, unchanged MCP server</strong></div>
+      </div>
+      <div class="strategy-grid" role="radiogroup" aria-label="Experiment arm">
+        <label class="strategy-option">
+          <input type="radio" name="strategy" value="direct" />
+          <span class="strategy-card">
+            <span class="strategy-heading"><strong>A · Direct model baseline</strong><span class="arm-label">Baseline</span></span>
+            <p>The 135M model sees raw <code>tools/list</code> descriptions and must decide which MCP tools to call and with what arguments.</p>
+            <span class="strategy-flow">complaint → 135M agent → MCP tools</span>
+          </span>
+        </label>
+        <label class="strategy-option">
+          <input type="radio" name="strategy" value="compiled" checked />
+          <span class="strategy-card">
+            <span class="strategy-heading"><strong>B · Purpose-compiled workflow</strong><span class="arm-label">Proposed</span></span>
+            <p>The same 135M model handles one narrow language task; a client-side Purpose Pack validates and executes the MCP workflow.</p>
+            <span class="strategy-flow">complaint → 135M task → validated plan → MCP tools</span>
+          </span>
+        </label>
+      </div>
+      <p class="variable-note"><strong>Independent variable:</strong> direct model autonomy vs. purpose-compiled orchestration. No MCP server changes.</p>
       <p id="status">Loading model...</p>
       <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
       <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
-      <label class="field-label" for="strategy">Orchestration strategy</label>
-      <select id="strategy">
-        <option value="compiled">Purpose compiled — constrained, validated workflow</option>
-        <option value="direct">Direct MCP agent — raw tools/list baseline</option>
-      </select>
       <label class="field-label" for="input">Civic issue</label>
       <div class="input-row">
         <textarea id="input" placeholder="e.g. There's a car blocking the bike lane on Main and Second" disabled></textarea>
         <button id="mic" title="Speak instead" disabled>🎤</button>
       </div>
-      <button id="go" disabled>Run local model + real MCP workflow</button>
+      <button id="go" disabled>Run B · Purpose-compiled workflow</button>
     </div>
 
     <div id="output" class="panel" style="display:none">
@@ -183,8 +255,22 @@
     </div>
 
     <div class="panel">
-      <h2 style="margin-top:0">Recent comparison runs</h2>
-      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each strategy. Metrics stay in this browser; complaint text is not stored.</p>
+      <h2 style="margin-top:0">A/B comparison</h2>
+      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each arm. The latest result for each appears side by side; complaint text is not stored.</p>
+      <div class="comparison-grid">
+        <div class="comparison-card">
+          <h3>A · Direct model baseline</h3>
+          <p class="description">Raw tool descriptions; model chooses the calls</p>
+          <div id="directOutcome" class="outcome">Not run yet</div>
+        </div>
+        <div class="comparison-card compiled">
+          <h3>B · Purpose-compiled workflow</h3>
+          <p class="description">Narrow model task; validated code runs the plan</p>
+          <div id="compiledOutcome" class="outcome">Not run yet</div>
+        </div>
+      </div>
+      <div id="comparisonReading" class="comparison-reading">Run both arms to reveal the latest head-to-head outcome.</div>
+      <h2>Recent measured runs</h2>
       <div style="overflow-x:auto">
         <table class="history">
           <thead><tr><th>Strategy</th><th>Status</th><th>Total</th><th>Model</th><th>Model calls</th><th>MCP calls</th></tr></thead>
@@ -233,7 +319,7 @@
     const input = document.getElementById('input')
     const go = document.getElementById('go')
     const mic = document.getElementById('mic')
-    const strategy = document.getElementById('strategy')
+    const strategyOptions = [...document.querySelectorAll('input[name="strategy"]')]
     const purposeStatus = document.getElementById('purposeStatus')
     const PURPOSE_PACK_URL = './purpose-packs/boston-311-related-reports.json'
     let purposePack
@@ -267,7 +353,7 @@
         mcpTools = tools
         compiledPlan = plan
         purposeStatus.className = 'purpose-status ready'
-        purposeStatus.textContent = `Purpose Pack ready: ${plan.objective} (${plan.steps.length} steps, ${tools.length} MCP tools verified)`
+        updatePurposeStatus()
         return plan
       } catch (error) {
         purposeStatus.className = 'purpose-status error'
@@ -427,7 +513,7 @@ Output: rats behind the dumpster on Oak St`
 
     function renderRunMetrics(run) {
       const fields = [
-        ['Strategy', run.strategy === 'compiled' ? 'Purpose compiled' : 'Direct agent'],
+        ['Experiment arm', strategyName(run.strategy)],
         ['Status', run.status],
         ['Total', `${run.durationMs} ms`],
         ['Model', `${run.modelDurationMs} ms`],
@@ -442,24 +528,92 @@ Output: rats behind the dumpster on Oak St`
       renderRunHistory()
     }
 
+    function strategyName(value) {
+      return value === 'compiled' ? 'B · Purpose compiled' : 'A · Direct baseline'
+    }
+
+    function renderOutcome(targetId, run) {
+      const target = document.getElementById(targetId)
+      if (!run) {
+        target.textContent = 'Not run yet'
+        return
+      }
+      const statusClass = run.status === 'passed' ? 'passed' : run.status === 'failed' ? 'failed' : ''
+      target.innerHTML = `
+        <span class="outcome-status ${statusClass}">${run.status}</span>
+        <span class="outcome-category">Matched: ${run.category || '—'}</span>
+        <div class="outcome-stats">
+          <div class="outcome-stat"><span>Total</span><strong>${Number(run.durationMs) || 0} ms</strong></div>
+          <div class="outcome-stat"><span>Model work</span><strong>${Number(run.modelDurationMs) || 0} ms</strong></div>
+          <div class="outcome-stat"><span>Model calls</span><strong>${Number(run.modelCalls) || 0}</strong></div>
+          <div class="outcome-stat"><span>MCP calls</span><strong>${Number(run.mcpCalls) || 0}</strong></div>
+        </div>`
+    }
+
+    function renderComparison(runs) {
+      const direct = runs.find((run) => run.strategy === 'direct')
+      const compiled = runs.find((run) => run.strategy === 'compiled')
+      renderOutcome('directOutcome', direct)
+      renderOutcome('compiledOutcome', compiled)
+
+      const reading = document.getElementById('comparisonReading')
+      if (!direct || !compiled) {
+        const missing = direct ? 'B · Purpose-compiled workflow' : compiled ? 'A · Direct model baseline' : 'both arms'
+        reading.textContent = `Run ${missing} with the same report to reveal the latest head-to-head outcome.`
+        return
+      }
+      if (direct.status !== compiled.status) {
+        reading.textContent = `Latest outcome: A was ${direct.status}; B was ${compiled.status}. Status reflects successful completion of the live MCP workflow.`
+        return
+      }
+      const difference = Math.abs(direct.durationMs - compiled.durationMs)
+      const faster = direct.durationMs <= compiled.durationMs ? 'A · Direct baseline' : 'B · Purpose compiled'
+      reading.textContent = `Latest outcome: both arms were ${direct.status}. ${faster} completed ${difference} ms faster; compare calls and execution traces before drawing a quality conclusion.`
+    }
+
     function renderRunHistory() {
       const rows = loadRuns().slice(0, 8)
       document.getElementById('runHistory').innerHTML = rows.length
-        ? rows.map((run) => `<tr><td>${run.strategy}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
+        ? rows.map((run) => `<tr><td>${strategyName(run.strategy)}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
         : '<tr><td colspan="6">No measured runs yet.</td></tr>'
+      renderComparison(rows)
     }
 
     renderRunHistory()
+
+    function selectedStrategy() {
+      return strategyOptions.find((option) => option.checked)?.value || 'compiled'
+    }
+
+    function updateRunButton() {
+      go.textContent = selectedStrategy() === 'compiled'
+        ? 'Run B · Purpose-compiled workflow'
+        : 'Run A · Direct model baseline'
+    }
+
+    function updatePurposeStatus() {
+      if (!compiledPlan || !mcpTools.length) return
+      purposeStatus.className = 'purpose-status ready'
+      purposeStatus.textContent = selectedStrategy() === 'compiled'
+        ? `Arm B ready: Purpose Pack compiled (${compiledPlan.steps.length} validated steps, ${mcpTools.length} MCP tools verified)`
+        : `Arm A ready: ${mcpTools.length} raw MCP tool descriptions available to the model (Purpose Pack not used)`
+    }
+
+    function updateSelectedArm() {
+      updateRunButton()
+      updatePurposeStatus()
+    }
+    strategyOptions.forEach((option) => option.addEventListener('change', updateSelectedArm))
 
     go.onclick = async () => {
       const text = input.value.trim()
       if (!text) return
       go.disabled = true
-      const selectedStrategy = strategy.value
-      const metrics = createRunMetrics(selectedStrategy, MODEL)
-      go.textContent = selectedStrategy === 'compiled' ? 'Compiling purpose workflow...' : 'Running direct MCP agent...'
+      const selectedStrategyValue = selectedStrategy()
+      const metrics = createRunMetrics(selectedStrategyValue, MODEL)
+      go.textContent = selectedStrategyValue === 'compiled' ? 'Running B · Purpose-compiled workflow...' : 'Running A · Direct model baseline...'
       document.getElementById('output').style.display = 'block'
-      document.getElementById('stepLabel').textContent = selectedStrategy === 'compiled'
+      document.getElementById('stepLabel').textContent = selectedStrategyValue === 'compiled'
         ? '1. Purpose-compiled extraction (running locally...)'
         : '1. Direct agent decision (running from raw tools/list...)'
       document.getElementById('extracted').textContent = ''
@@ -469,7 +623,7 @@ Output: rats behind the dumpster on Oak St`
       try {
         await ensureMcpReady()
         let execution
-        if (selectedStrategy === 'compiled') {
+        if (selectedStrategyValue === 'compiled') {
           execution = await executePlan(
             compiledPlan,
             {
@@ -510,7 +664,7 @@ Output: rats behind the dumpster on Oak St`
       } catch (err) {
         renderCallTrace(metrics.events)
         const hadMcpCall = metrics.events.some((event) => event.type === 'mcp_call')
-        if (selectedStrategy === 'compiled' && hadMcpCall && /MCP|fetch|network|timed out|Failed to fetch/i.test(err.message)) {
+        if (selectedStrategyValue === 'compiled' && hadMcpCall && /MCP|fetch|network|timed out|Failed to fetch/i.test(err.message)) {
           console.warn('MCP call failed, using cached fallback:', err)
           renderResult(CANNED_FALLBACK, true)
           renderRunMetrics(metrics.finish({ status: 'cached-fallback', category: CANNED_FALLBACK.matched.service_name }))
@@ -523,7 +677,7 @@ Output: rats behind the dumpster on Oak St`
         }
       } finally {
         go.disabled = false
-        go.textContent = 'Run local model + real MCP workflow'
+        updateRunButton()
       }
     }
   </script>
