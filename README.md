@@ -147,12 +147,27 @@ addition to wall time and call counts, each run records Ollama prompt and output
 token counts. Direct-agent mode remains allowed to fail when the selected model
 cannot produce a valid tool decision.
 
-After both arms have run, the latest matched-model comparison also displays
-paired A/B bars, raw values, and normalized A:B ratios for workflow completion,
-category correctness, end-to-end/model/non-model time, prompt/output/total
-tokens, and model/MCP/repair calls. For lower-is-better metrics, `A:B 2.4:1`
-means the direct baseline consumed 2.4 times the resource used by the compiled
-workflow.
+After both arms have run, the latest matched-model comparison provides a tab
+for each metric with large paired A/B bars, raw values, and normalized A:B
+ratios. Tabs cover workflow completion, category correctness,
+end-to-end/model/non-model time, prompt/output/total tokens, and
+model/MCP/repair calls. The tab strip supports clicks, touch, and keyboard arrow
+navigation. For lower-is-better metrics, `A:B 2.4:1` means the direct baseline
+consumed 2.4 times the resource used by the compiled workflow.
+
+The interface also separates the complete demo into seven ordered top-level
+tabs: experiment setup, the active Purpose Pack, agent/MCP trace, live Boston
+311 results, A/B summary, head-to-head metrics, and recent run history. The
+Purpose Pack tab exposes editable JSON; revisions compile against the live MCP
+tool schemas and are stored locally only after validation. Unsaved revisions
+are validated automatically before the next Arm B run, and invalid revisions
+fail closed while preserving the last valid plan.
+
+`Clear All`, beside the MCP Purpose Compiler label, clears the civic input,
+stored run history, traces, live results, comparison summaries, and metric-tab
+state, then restores the default experiment arm and default available Ollama
+model. It also discards local Purpose Pack revisions and restores the bundled
+pack.
 
 For reproducibility, deterministic category and location behavior is checked
 against [`tests/fixtures/civic-issues.json`](tests/fixtures/civic-issues.json).
