@@ -1,0 +1,20 @@
+{
+  "name": "boston-311-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP streamable-HTTP server wrapping Boston 311 Open311 API — Sundai Hack 138 project 2",
+  "type": "module",
+  "main": "server.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "zod": "^4.5.4"
+  }
+}

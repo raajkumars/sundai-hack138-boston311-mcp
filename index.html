@@ -1,0 +1,297 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Small model, real MCP, real 311</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+<meta name="theme-color" content="#0b0d14" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+  :root {
+    --bg-0: #0b0d14; --bg-1: #11141f; --bg-2: #171b2b;
+    --border: #262c40; --border-soft: #1d2233;
+    --text-0: #f1f3fb; --text-1: #b6bcd6; --text-2: #7c84a3;
+    --accent-0: #7c8cff; --accent-1: #a78bfa; --accent-glow: rgba(124, 140, 255, 0.35);
+    --ok: #4ade80; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background:
+      radial-gradient(1100px 520px at 12% -10%, rgba(124, 140, 255, 0.16), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgba(167, 139, 250, 0.12), transparent 55%),
+      var(--bg-0);
+    color: var(--text-0); margin: 0; padding: 56px 20px 80px; min-height: 100vh; line-height: 1.55;
+  }
+  .page { max-width: 720px; margin: 0 auto; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent-1);
+    background: rgba(124, 140, 255, 0.1); border: 1px solid rgba(124, 140, 255, 0.28);
+    padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .kicker::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-1); box-shadow: 0 0 8px var(--accent-glow); }
+  h1 {
+    font-size: 32px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #ffffff 20%, var(--text-1) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lede { font-size: 16px; color: var(--text-1); margin: 0 0 22px; max-width: 60ch; }
+  .lede strong { color: var(--text-0); font-weight: 600; }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
+  .feature-badge {
+    font-size: 12.5px; color: var(--text-1); background: var(--bg-1); border: 1px solid var(--border-soft);
+    padding: 6px 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .panel {
+    background: linear-gradient(180deg, var(--bg-1), var(--bg-2)); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px; box-shadow: 0 24px 60px -32px rgba(0, 0, 0, 0.65);
+  }
+  .panel + .panel { margin-top: 20px; }
+  #status {
+    font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-size: 13px; color: var(--text-1);
+    display: flex; align-items: center; gap: 9px; margin: 0 0 16px;
+  }
+  #status::before {
+    content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-1);
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.18); flex: none; animation: pulse 1.6s ease-in-out infinite;
+  }
+  label.field-label {
+    display: block; font-size: 12.5px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--text-2); margin-bottom: 10px;
+  }
+  .input-row { display: flex; gap: 10px; align-items: flex-start; }
+  textarea {
+    flex: 1; height: 90px; font-size: 15px; font-family: inherit; padding: 14px; resize: vertical;
+    background: var(--bg-0); color: var(--text-0); border: 1px solid var(--border); border-radius: 10px;
+    transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+  }
+  textarea::placeholder { color: var(--text-2); }
+  textarea:focus { outline: none; border-color: var(--accent-0); box-shadow: 0 0 0 3px var(--accent-glow); }
+  textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+  button {
+    font-family: inherit; font-size: 15px; font-weight: 600; color: #0b0d14;
+    background: linear-gradient(135deg, var(--accent-0), var(--accent-1)); border: none;
+    padding: 13px 20px; border-radius: 10px; cursor: pointer;
+    box-shadow: 0 10px 26px -10px var(--accent-glow);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 30px -10px var(--accent-glow); }
+  button:active:not(:disabled) { transform: translateY(0); }
+  button:disabled { background: var(--bg-2); color: var(--text-2); cursor: not-allowed; box-shadow: none; }
+  #mic { padding: 13px 16px; background: var(--bg-2); color: var(--text-0); box-shadow: none; flex: none; }
+  #mic.listening { background: linear-gradient(135deg, #ef4444, #f97316); color: #0b0d14; }
+  #go { width: 100%; margin-top: 14px; }
+  h2 {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-2); margin: 26px 0 12px;
+  }
+  #output h2:first-child { margin-top: 0; }
+  #stepLabel { color: var(--ok); }
+  pre {
+    background: var(--bg-0); border: 1px solid var(--border-soft); color: var(--text-0);
+    padding: 16px; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; border-radius: 10px; margin: 0;
+  }
+  .report {
+    background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 9px;
+    padding: 12px 14px; margin-top: 8px; font-size: 13.5px;
+  }
+  .report .addr { color: var(--text-1); font-size: 12.5px; margin-top: 4px; }
+  .report .meta { color: var(--text-2); font-size: 11.5px; margin-top: 4px; }
+  #output { animation: fadeIn 0.45s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  footer.note { margin-top: 28px; font-size: 12.5px; color: var(--text-2); text-align: center; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <span class="kicker">On-device model + real MCP tool</span>
+    <h1>Small model, real MCP server, real 311 data</h1>
+    <p class="lede">
+      <strong>Describe a civic issue — speak or type.</strong>
+      A small model running in this tab extracts the structured request.
+      Deterministic code then makes a real MCP tool call to a server that
+      looks it up against Boston's live 311 system.
+    </p>
+
+    <div class="badge-row">
+      <span class="feature-badge">⚡ Local extraction, WebGPU</span>
+      <span class="feature-badge">🔌 Real MCP over streamable HTTP</span>
+      <span class="feature-badge">🏛️ Live Boston 311 data</span>
+    </div>
+
+    <div class="panel">
+      <p id="status">Loading model...</p>
+      <label class="field-label" for="input">Civic issue</label>
+      <div class="input-row">
+        <textarea id="input" placeholder="e.g. There's a car blocking the bike lane on Main and Second" disabled></textarea>
+        <button id="mic" title="Speak instead" disabled>🎤</button>
+      </div>
+      <button id="go" disabled>Extract &amp; look up (local model + real MCP call)</button>
+    </div>
+
+    <div id="output" class="panel" style="display:none">
+      <h2 id="stepLabel">1. Model extraction (local, offline-capable)</h2>
+      <pre id="extracted"></pre>
+      <h2>2. MCP tool call (real request sent)</h2>
+      <pre id="mcpCall"></pre>
+      <h2>3. Result — real Boston 311 data</h2>
+      <div id="mcpResult"></div>
+    </div>
+
+    <footer class="note">Sundai Hack 138 · MIT — model runs on-device, MCP call is real and live.</footer>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e))
+      })
+    }
+  </script>
+  <script type="module">
+    import { pipeline, env } from './vendor/transformers.min.js'
+    import { mcpCallTool } from './mcp-client.js'
+
+    // Weights are vendored in ./models — no Hugging Face Hub call, ever.
+    env.allowRemoteModels = false
+    env.allowLocalModels = true
+    env.localModelPath = './models/'
+
+    // Swap this to the deployed MCP server URL once devops-lead hosts it.
+    const MCP_SERVER_URL = window.MCP_SERVER_URL || 'http://localhost:8311/mcp'
+
+    const MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct'
+    const statusEl = document.getElementById('status')
+    const input = document.getElementById('input')
+    const go = document.getElementById('go')
+    const mic = document.getElementById('mic')
+
+    let generator
+    async function load() {
+      try {
+        generator = await pipeline('text-generation', MODEL, {
+          dtype: 'q4',
+          device: 'webgpu',
+          progress_callback: (p) => {
+            if (p.status === 'progress') {
+              statusEl.textContent = `Downloading ${p.file} — ${Math.round(p.progress || 0)}%`
+            }
+          },
+        })
+      } catch (err) {
+        statusEl.textContent = 'WebGPU unavailable, falling back to WASM (slower, still local)...'
+        generator = await pipeline('text-generation', MODEL, { dtype: 'q4', device: 'wasm' })
+      }
+      statusEl.textContent = `Loaded ${MODEL} — extraction runs with 0 network calls.`
+      input.disabled = false
+      go.disabled = false
+    }
+    load()
+
+    // Speech input — built into Chrome, no dependency. Degrades to
+    // text-only silently if unsupported.
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SR) {
+      mic.disabled = false
+      const rec = new SR()
+      rec.lang = 'en-US'
+      rec.interimResults = false
+      rec.onresult = (e) => { input.value = e.results[0][0].transcript }
+      rec.onstart = () => mic.classList.add('listening')
+      rec.onend = () => mic.classList.remove('listening')
+      mic.onclick = () => rec.start()
+    } else {
+      mic.style.display = 'none'
+    }
+
+    const SYSTEM_PROMPT = `Extract a civic issue report as JSON. Output ONLY one JSON object, nothing else.
+Schema: {"category": short plain-language issue type, "location": street or intersection if stated else "", "description": short restatement of the issue}
+Rules: use ONLY facts stated in the text. Never invent a location or detail not present.
+
+Example input: "There's a car blocking the bike lane on Main and Second"
+Example output: {"category": "illegal parking", "location": "Main and Second", "description": "car blocking the bike lane"}`
+
+    function parseExtraction(reply) {
+      const match = reply.match(/\{[\s\S]*\}/)
+      if (match) {
+        try { return JSON.parse(match[0]) } catch (e) { /* fall through */ }
+      }
+      return { category: reply.trim().slice(0, 60), location: '', description: reply.trim().slice(0, 120) }
+    }
+
+    function renderResult(data) {
+      const box = document.getElementById('mcpResult')
+      box.innerHTML = ''
+      if (!data.matched) {
+        box.innerHTML = '<div class="report">No matching Boston 311 service found for that category.</div>'
+        return
+      }
+      const header = document.createElement('div')
+      header.className = 'report'
+      header.innerHTML = `<strong>Matched service:</strong> ${data.matched.service_name}`
+      if (data.locationMatched === false) {
+        header.innerHTML += ' <span style="color:var(--text-2)">— no live report at that exact location right now, showing recent citywide reports for this category instead</span>'
+      }
+      box.appendChild(header)
+      if (!data.results.length) {
+        const none = document.createElement('div')
+        none.className = 'report'
+        none.textContent = 'No recent open reports found for that filter right now.'
+        box.appendChild(none)
+      }
+      data.results.forEach((r) => {
+        const el = document.createElement('div')
+        el.className = 'report'
+        el.innerHTML = `
+          <div>#${r.id} — ${r.description || '(no description)'}</div>
+          <div class="addr">${r.address || ''}</div>
+          <div class="meta">${r.status} · reported ${r.requested}</div>
+        `
+        box.appendChild(el)
+      })
+    }
+
+    go.onclick = async () => {
+      const text = input.value.trim()
+      if (!text) return
+      go.disabled = true
+      const started = performance.now()
+      go.textContent = 'Extracting locally...'
+      document.getElementById('output').style.display = 'block'
+      document.getElementById('mcpCall').textContent = ''
+      document.getElementById('mcpResult').innerHTML = ''
+      try {
+        const out = await generator(
+          [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: text },
+          ],
+          { max_new_tokens: 80, do_sample: false }
+        )
+        const latency = Math.round(performance.now() - started)
+        const reply = out[0].generated_text.at(-1).content
+        const extracted = parseExtraction(reply)
+        document.getElementById('stepLabel').textContent = `1. Model extraction — ${MODEL} (local, ${latency}ms)`
+        document.getElementById('extracted').textContent = JSON.stringify(extracted, null, 2)
+
+        go.textContent = 'Calling MCP server...'
+        const callPayload = { name: 'query_recent', arguments: { category: extracted.category, location: extracted.location || undefined } }
+        document.getElementById('mcpCall').textContent = `tools/call -> ${MCP_SERVER_URL}\n${JSON.stringify(callPayload, null, 2)}`
+
+        const result = await mcpCallTool(MCP_SERVER_URL, callPayload.name, callPayload.arguments)
+        renderResult(result)
+      } catch (err) {
+        document.getElementById('mcpResult').innerHTML = `<div class="report">Error: ${err.message}</div>`
+      } finally {
+        go.disabled = false
+        go.textContent = 'Extract & look up (local model + real MCP call)'
+      }
+    }
+  </script>
+</body>
+</html>
