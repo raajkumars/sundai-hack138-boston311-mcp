@@ -1,13 +1,13 @@
-# MCP Purpose Compiler — brief deck outline
+# Purpose-Compiled MCP Orchestration — brief deck outline
 
 This is the editable content outline for [`project-deck.html`](project-deck.html).
 The presentation is intentionally brief and designed for a five-minute project
 introduction plus a live demonstration.
 
-## 1. MCP Purpose Compiler
+## 1. Purpose-Compiled MCP Orchestration
 
-Can purpose-compiled orchestration make the same local model more reliable at a
-real MCP task?
+Direct MCP tool use versus purpose-compiled orchestration for the same small
+local model.
 
 - Local inference via Ollama
 - Live Boston 311 data
@@ -23,20 +23,44 @@ routing, or multi-step control.
 ## 3. Give the model less to get wrong
 
 A client-side Purpose Pack turns an MCP-backed objective into a validated
-workflow. The model handles issue understanding and extraction; deterministic
-code handles routing, schemas, limits, results, and verification. No MCP server
-changes are required.
+workflow. The local model performs one narrow rewrite. The Purpose Pack defines
+the objective, tools, workflow, references, result, and limits. Deterministic
+client code derives category/location, validates live schemas, sequences calls,
+and handles results. No MCP server changes are required.
 
 ## 4. Architecture
 
 ```text
 Local Ollama  <->  Browser client  <->  unchanged Boston 311 MCP  ->  Open311
-                    | Purpose Pack       lookup_service
-                    | compiler           query_recent
-                    | metrics
+                    | 7-tab UI           lookup_service
+                    | editable pack      query_recent
+                    | compiler/MCP/metrics
 ```
 
-## 5. Controlled A/B experiment
+## 5. The Purpose Pack is live, editable policy
+
+The current application exposes the active Purpose Pack as editable JSON.
+
+```text
+edit locally -> compile against live tools/list -> activate for later Arm B runs
+                         |
+                         +-> invalid: retain the last valid plan
+```
+
+Valid revisions persist locally. `Clear All` restores the bundled pack. The
+unchanged MCP server remains unaware of this client policy.
+
+Current application tabs, in order:
+
+1. Experiment
+2. Purpose Pack
+3. Agent & MCP
+4. Boston 311 result
+5. A/B summary
+6. Metrics
+7. Run history
+
+## 6. Controlled A/B experiment
 
 Held constant: selected Ollama model, civic issue, task, tools, and live MCP
 server.
@@ -49,7 +73,7 @@ server.
 Measured per run: status, category correctness, wall/model time, model calls,
 MCP calls, repair calls, and prompt/output tokens.
 
-## 6. Results — quality and reliability
+## 7. Observed demo runs — quality and reliability
 
 Paired horizontal bars retain the raw A and B values while the badge on each
 card reports a normalized A:B ratio (B = 1). This slide separates outcome
@@ -60,11 +84,15 @@ quality from resource use:
 - Useful end-to-end success (completed and category-correct)
 - First-pass success (useful success without a repair call)
 
-## 7. Results — efficiency
+In the supplied UI capture, four recent live runs per arm all completed, matched
+the expected category, and required no repair. This is descriptive evidence
+from one case, not a definitive benchmark.
+
+## 8. Observed demo runs — efficiency
 
 The second results slide compares the cost of the outcome:
 
-- Median and P95 wall time
+- Median and maximum wall time
 - Median model/inference time
 - Median total tokens
 - Total wall time and tokens per useful success, so fast failures do not look
@@ -72,19 +100,20 @@ The second results slide compares the cost of the outcome:
 - Mean model, MCP, and repair calls per run
 
 For lower-is-better measures, an A:B ratio of `2.4:1` means the direct baseline
-used 2.4 times the resources of the purpose-compiled workflow. P95 wall time is
-included so the median does not conceal slow or looping outliers.
+used 2.4 times the resources of the purpose-compiled workflow. Maximum wall
+time replaces P95 because only four captured runs per arm are available.
 
-The HTML benchmark object is deliberately initialized with `null` values.
-Supply:
+Observed context: `qwen2.5:14b`, one civic issue, four runs per arm, live MCP
+data, hardware not recorded. From the captured run history:
 
-1. Run context: exact Ollama model, device/hardware, number of test cases, runs
-   per case, and whether MCP results were live or replayed.
-2. For each arm: passed runs, correct-category runs, runs satisfying both,
-   zero-repair successful runs, wall and model times, prompt and output tokens,
-   model calls, MCP calls, and repair calls.
+- Median wall time: A 1,365 ms; B 1,055 ms
+- Maximum wall time: A 1,420 ms; B 1,156 ms
+- Median model time: A 783.5 ms; B 333 ms
+- Median total tokens: A 454; B 114
+- Mean model calls: A 1; B 1
+- Mean MCP calls: A 1; B 2
+- Mean repair calls: A 0; B 0
 
-The `BENCHMARK` object near the top of the HTML script is the single place to
-enter aggregate results; it drives labels, ratios, bars, and plain-language
-readings. Rates are entered from 0 to 1 and times in milliseconds. Matched
-inputs and the same warmed model should be used for both arms.
+The `BENCHMARK` object in the HTML drives all raw labels, A:B ratios, bars, and
+plain-language readings. Future formal benchmark results can replace these
+descriptive values in one place.
