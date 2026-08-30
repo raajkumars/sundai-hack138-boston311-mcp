@@ -10,6 +10,16 @@ protocol and choose every tool itself.
 The application is read-only. It never files Boston 311 requests. A hosted PWA
 is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>.
 
+## Live URLs
+
+- PWA: <https://sundai-hack138-2-gw.route.qwickforge.com/>
+- MCP server (streamable HTTP):
+  <https://boston311-mcp-gw.route.qwickforge.com/mcp>
+  — `GET .../health` for a liveness check without speaking MCP.
+
+The source and hosted PWA use the public read-only MCP deployment by default.
+No local MCP process is required.
+
 ## What it demonstrates
 
 The browser runs SmolLM2-135M-Instruct locally with Transformers.js. It connects
