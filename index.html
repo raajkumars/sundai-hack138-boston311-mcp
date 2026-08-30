@@ -35,6 +35,13 @@
     padding: 5px 12px; border-radius: 999px; margin-bottom: 18px;
   }
   .kicker::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-1); box-shadow: 0 0 8px var(--accent-glow); }
+  .experiment-label-row { align-items: center; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .experiment-label-row .kicker { margin-bottom: 0; }
+  button.clear-all {
+    background: rgba(248, 113, 113, .06); border: 1px solid rgba(248, 113, 113, .35); border-radius: 8px;
+    box-shadow: none; color: #fca5a5; font-size: 11px; padding: 7px 11px;
+  }
+  button.clear-all:hover:not(:disabled) { background: rgba(248, 113, 113, .12); border-color: #f87171; box-shadow: none; transform: none; }
   h1 {
     font-size: 32px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em;
     background: linear-gradient(135deg, #ffffff 20%, var(--text-1) 100%);
@@ -137,7 +144,6 @@
     font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--text-2); margin: 26px 0 12px;
   }
-  #output h2:first-child { margin-top: 0; }
   #stepLabel { color: var(--ok); }
   pre {
     background: var(--bg-0); border: 1px solid var(--border-soft); color: var(--text-0);
@@ -182,133 +188,293 @@
     background: rgba(124, 140, 255, .08); border: 1px solid rgba(124, 140, 255, .22);
     border-radius: 9px; color: var(--text-1); font-size: 12.5px; margin: 12px 0 16px; padding: 10px 12px;
   }
+  .section-tabs-shell {
+    position: sticky; top: 8px; z-index: 20; margin: 0 0 22px; padding: 8px;
+    background: rgba(11, 13, 20, .9); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 16px 36px -24px #000; backdrop-filter: blur(14px);
+  }
+  .section-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.section-tab {
+    align-items: center; display: inline-flex; gap: 7px; flex: 1 1 auto; justify-content: center;
+    min-width: max-content; padding: 9px 11px; color: var(--text-1); background: var(--bg-1);
+    border: 1px solid var(--border-soft); border-radius: 8px; box-shadow: none; font-size: 11.5px;
+  }
+  button.section-tab span { color: var(--text-2); font: 800 9px/1 'SF Mono', ui-monospace, monospace; }
+  button.section-tab:hover:not(:disabled) { transform: none; box-shadow: none; border-color: #3b4568; }
+  button.section-tab[aria-selected="true"] {
+    color: var(--text-0); border-color: var(--accent-0); background: rgba(124, 140, 255, .15);
+    box-shadow: inset 0 -2px 0 var(--accent-1);
+  }
+  button.section-tab[aria-selected="true"] span { color: var(--accent-1); }
+  button.section-tab:focus-visible { outline: 2px solid var(--accent-1); outline-offset: 2px; }
+  .section-panel { animation: sectionArrive .2s ease-out; }
+  .section-panel[hidden] { display: none; }
+  .section-panel > .panel > h2 { font-size: 14px; }
+  .section-panel pre { font-size: 15px; line-height: 1.55; }
+  .section-panel .report { font-size: 14px; padding: 14px 16px; }
+  .section-panel .comparison-card h3 { font-size: 16px; }
+  .section-panel .comparison-card .description { font-size: 12.5px; }
+  .section-panel .outcome { font-size: 14px; }
+  .section-panel .outcome-stat strong { font-size: 14px; }
+  .section-panel .history { font-size: 13px; }
+  .section-empty { color: var(--text-2); border: 1px dashed var(--border); border-radius: 10px; padding: 18px; font-size: 14px; }
+  .purpose-pack-heading { align-items: flex-start; display: flex; justify-content: space-between; gap: 18px; margin-bottom: 16px; }
+  .purpose-pack-heading h2 { margin-bottom: 5px; }
+  .purpose-pack-heading p { color: var(--text-1); font-size: 13.5px; line-height: 1.5; margin: 0; max-width: 62ch; }
+  .purpose-pack-source {
+    background: rgba(124, 140, 255, .09); border: 1px solid rgba(124, 140, 255, .3); border-radius: 999px;
+    color: var(--accent-1); flex: none; font: 700 10px/1 'SF Mono', ui-monospace, monospace; padding: 7px 9px;
+  }
+  .purpose-pack-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .purpose-pack-summary-item { background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 9px; padding: 9px 11px; }
+  .purpose-pack-summary-item span { color: var(--text-2); display: block; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+  .purpose-pack-summary-item strong { color: var(--text-1); display: block; font-size: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+  textarea.purpose-pack-editor {
+    display: block; width: 100%; height: clamp(360px, 54vh, 620px); min-height: 300px; resize: vertical;
+    font: 13px/1.5 'SF Mono', ui-monospace, Menlo, monospace; tab-size: 2; white-space: pre;
+  }
+  .purpose-pack-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+  button.secondary-action { background: var(--bg-0); border: 1px solid var(--border); box-shadow: none; color: var(--text-1); }
+  button.secondary-action:hover:not(:disabled) { background: var(--bg-2); border-color: #3b4568; box-shadow: none; transform: none; }
+  .purpose-pack-editor-status {
+    background: var(--bg-0); border: 1px solid var(--border); border-radius: 9px; color: var(--text-1);
+    font: 12px/1.45 'SF Mono', ui-monospace, Menlo, monospace; margin-top: 11px; padding: 10px 12px;
+  }
+  .purpose-pack-editor-status.ready { border-color: rgba(74, 222, 128, .35); color: var(--ok); }
+  .purpose-pack-editor-status.dirty { border-color: rgba(251, 191, 36, .38); color: #fbbf24; }
+  .purpose-pack-editor-status.error { border-color: rgba(248, 113, 113, .45); color: #fca5a5; }
+  .purpose-pack-note { color: var(--text-2); font-size: 11px; line-height: 1.45; margin: 10px 0 0; }
+  @keyframes sectionArrive { from { opacity: 0; transform: translateY(5px); } }
+  .ab-dashboard { margin: 14px 0 18px; }
+  .ab-dashboard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .ab-dashboard-head h2 { margin: 0; }
+  .ab-legend { color: var(--text-2); display: flex; flex-wrap: wrap; gap: 10px; font-size: 10.5px; }
+  .ab-legend span { align-items: center; display: inline-flex; gap: 5px; }
+  .ab-legend i { background: #68708d; border-radius: 99px; display: inline-block; height: 6px; width: 18px; }
+  .ab-legend i.b { background: linear-gradient(90deg, var(--accent-0), #a78bfa); }
+  .ab-tabs { display: grid; gap: 12px; }
+  .ab-tab-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 2px 8px; scrollbar-color: var(--accent-0) var(--bg-0); }
+  button.ab-tab {
+    background: var(--bg-0); border: 1px solid var(--border-soft); border-radius: 8px; box-shadow: none;
+    color: var(--text-1); flex: 0 0 auto; font-size: 11px; padding: 8px 11px; white-space: nowrap;
+  }
+  button.ab-tab:hover:not(:disabled) { border-color: #3b4568; box-shadow: none; transform: none; }
+  button.ab-tab[aria-selected="true"] {
+    background: rgba(124, 140, 255, .14); border-color: var(--accent-0); color: var(--text-0);
+    box-shadow: inset 0 -2px 0 var(--accent-1);
+  }
+  button.ab-tab:focus-visible { outline: 2px solid var(--accent-1); outline-offset: 2px; }
+  .ab-tab-panel { min-height: 225px; }
+  .ab-metric { background: var(--bg-0); border: 1px solid rgba(124, 140, 255, .28); border-radius: 12px; padding: 20px 22px; animation: metricArrive .18s ease-out; }
+  .ab-metric-top { align-items: start; display: grid; gap: 14px; grid-template-columns: 1fr auto; }
+  .ab-metric-name { color: var(--text-0); display: block; font-size: 18px; font-weight: 750; }
+  .ab-metric-note { color: var(--text-2); display: block; font-size: 12px; margin-top: 3px; }
+  .ab-ratio { background: rgba(124, 140, 255, .09); border: 1px solid rgba(124, 140, 255, .3); border-radius: 7px; color: #c4b5fd; font: 700 14px/1 'SF Mono', ui-monospace, monospace; padding: 8px 9px; white-space: nowrap; }
+  .ab-ratio.favorable { border-color: rgba(74, 222, 128, .35); color: var(--ok); }
+  .ab-series-list { display: grid; gap: 12px; margin-top: 20px; }
+  .ab-series { align-items: center; display: grid; gap: 12px; grid-template-columns: 18px minmax(0, 1fr) minmax(78px, auto); }
+  .ab-series-label { color: var(--text-2); font: 800 13px/1 'SF Mono', ui-monospace, monospace; }
+  .ab-series.b .ab-series-label { color: #a78bfa; }
+  .ab-bar-track { background: var(--bg-2); border-radius: 99px; height: 14px; overflow: hidden; }
+  .ab-bar { background: #68708d; border-radius: inherit; display: block; height: 100%; min-width: 0; }
+  .ab-series.b .ab-bar { background: linear-gradient(90deg, var(--accent-0), #a78bfa); }
+  .ab-series-value { color: var(--text-0); font: 750 15px/1 'SF Mono', ui-monospace, monospace; text-align: right; }
+  .ab-metric-reading { color: var(--text-1); font-size: 13px; line-height: 1.45; margin: 18px 0 0; }
+  .ab-dashboard-empty { background: var(--bg-0); border: 1px dashed var(--border); border-radius: 10px; color: var(--text-2); font-size: 12px; padding: 14px; }
+  .ab-ratio-help { color: var(--text-2); font-size: 11px; line-height: 1.45; margin: 1px 2px 0; }
+  @keyframes metricArrive { from { opacity: 0; transform: translateY(3px); } }
   @media (max-width: 600px) {
     .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .strategy-grid, .comparison-grid { grid-template-columns: 1fr; }
     .controlled-variables { grid-template-columns: 1fr; }
+    .section-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-color: var(--accent-0) var(--bg-0); }
+    button.section-tab { flex: 0 0 auto; }
+    .purpose-pack-heading { flex-direction: column; }
+    .purpose-pack-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ab-dashboard-head { align-items: flex-start; flex-direction: column; }
+    .ab-tab-list { flex-wrap: nowrap; overflow-x: auto; }
+    .ab-metric { padding: 17px 15px; }
+    .ab-metric-top { grid-template-columns: 1fr; }
+    .ab-ratio { width: fit-content; }
+    .ab-series { grid-template-columns: 16px minmax(0, 1fr) minmax(65px, auto); }
   }
-  #output { animation: fadeIn 0.45s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   footer.note { margin-top: 28px; font-size: 12.5px; color: var(--text-2); text-align: center; }
 </style>
 </head>
 <body>
   <div class="page">
-    <span class="kicker">MCP Purpose Compiler</span>
-    <h1>Can orchestration make a local model better at MCP?</h1>
-    <p class="lede">
-      <strong>This demo is a controlled comparison.</strong> Give the same civic
-      issue to the same selected model and the same live Boston 311 MCP server.
-      Change only how the work is orchestrated. The model can run in-browser
-      via WebGPU, through a local Ollama install, or via your own API key —
-      whichever is available.
-    </p>
+    <nav class="section-tabs-shell" aria-label="Application sections">
+      <div class="section-tabs" role="tablist" aria-label="Application sections">
+        <button id="section-tab-experiment" class="section-tab" type="button" role="tab" aria-controls="section-experiment" aria-selected="true" data-section="experiment"><span>1</span> Experiment</button>
+        <button id="section-tab-purpose-pack" class="section-tab" type="button" role="tab" aria-controls="section-purpose-pack" aria-selected="false" tabindex="-1" data-section="purpose-pack"><span>2</span> Purpose Pack</button>
+        <button id="section-tab-trace" class="section-tab" type="button" role="tab" aria-controls="section-trace" aria-selected="false" tabindex="-1" data-section="trace"><span>3</span> Agent &amp; MCP</button>
+        <button id="section-tab-result" class="section-tab" type="button" role="tab" aria-controls="section-result" aria-selected="false" tabindex="-1" data-section="result"><span>4</span> Boston 311 result</button>
+        <button id="section-tab-comparison" class="section-tab" type="button" role="tab" aria-controls="section-comparison" aria-selected="false" tabindex="-1" data-section="comparison"><span>5</span> A/B summary</button>
+        <button id="section-tab-metrics" class="section-tab" type="button" role="tab" aria-controls="section-metrics" aria-selected="false" tabindex="-1" data-section="metrics"><span>6</span> Metrics</button>
+        <button id="section-tab-history" class="section-tab" type="button" role="tab" aria-controls="section-history" aria-selected="false" tabindex="-1" data-section="history"><span>7</span> Run history</button>
+      </div>
+    </nav>
 
-    <div class="badge-row">
-      <span id="modelBadge" class="feature-badge">⚡ No backend ready</span>
-      <span class="feature-badge">🧭 Client-side Purpose Pack</span>
-      <span class="feature-badge">🔌 Unchanged MCP server</span>
-      <span class="feature-badge">🏛️ Live Boston 311 data</span>
-    </div>
+    <section id="section-experiment" class="section-panel active" role="tabpanel" aria-labelledby="section-tab-experiment" data-section-panel="experiment">
+      <div class="experiment-label-row">
+        <span class="kicker">MCP Purpose Compiler</span>
+        <button id="clearAll" class="clear-all" type="button">Clear All</button>
+      </div>
+      <h1>Can orchestration make a local model better at MCP?</h1>
+      <p class="lede">
+        <strong>This demo is a controlled comparison.</strong> Give the same civic
+        issue to the same selected model and the same live Boston 311 MCP server.
+        Change only how the work is orchestrated. The model can run in-browser
+        via WebGPU, through a local Ollama install, or via your own API key —
+        whichever is available.
+      </p>
 
-    <div class="panel">
-      <div class="model-picker">
-        <label class="field-label" for="backendTier">Inference backend</label>
-        <select id="backendTier" disabled>
-          <option value="">Detecting available backends...</option>
-        </select>
-        <p class="model-note" id="backendNote">Checking WebGPU and local Ollama...</p>
+      <div class="badge-row">
+        <span id="modelBadge" class="feature-badge">⚡ No backend ready</span>
+        <span class="feature-badge">🧭 Client-side Purpose Pack</span>
+        <span class="feature-badge">🔌 Unchanged MCP server</span>
+        <span class="feature-badge">🏛️ Live Boston 311 data</span>
       </div>
-      <div id="byokFields" class="model-picker" style="display:none">
-        <label class="field-label" for="byokProvider">Provider</label>
-        <select id="byokProvider">
-          <option value="groq">Groq</option>
-          <option value="openrouter">OpenRouter</option>
-        </select>
-        <label class="field-label" for="byokKey" style="margin-top:10px">API key — stored only in this browser, sent only to the provider above</label>
-        <input id="byokKey" type="password" autocomplete="off" placeholder="Paste your API key" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
-        <label class="field-label" for="byokModelName" style="margin-top:10px">Model</label>
-        <input id="byokModelName" type="text" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
-        <button id="byokSave" type="button" style="margin-top:10px">Use this key</button>
-      </div>
-      <div class="model-picker" id="ollamaModelPicker" style="display:none">
-        <label class="field-label" for="ollamaModel">Local Ollama model — used by both arms</label>
-        <select id="ollamaModel" disabled>
-          <option>Discovering installed models...</option>
-        </select>
-        <p class="model-note">Loaded from your local Ollama service at <code id="ollamaEndpoint"></code>. Changing the model filters the comparison to that model.</p>
-      </div>
-      <p class="experiment-question"><strong>Choose an experiment arm</strong></p>
-      <div class="controlled-variables" aria-label="Controlled variables">
-        <div class="controlled-variable"><span>Same model</span><strong id="sameModelValue">Detecting backend...</strong></div>
-        <div class="controlled-variable"><span>Same task</span><strong>Find related 311 reports</strong></div>
-        <div class="controlled-variable"><span>Same tools</span><strong>Live, unchanged MCP server</strong></div>
-      </div>
-      <div class="strategy-grid" role="radiogroup" aria-label="Experiment arm">
-        <label class="strategy-option">
-          <input type="radio" name="strategy" value="direct" />
-          <span class="strategy-card">
-            <span class="strategy-heading"><strong>A · Direct model baseline</strong><span class="arm-label">Baseline</span></span>
-            <p>The selected model sees raw <code>tools/list</code> descriptions and must decide which MCP tools to call and with what arguments.</p>
-            <span class="strategy-flow">complaint → selected model → MCP tools</span>
-          </span>
-        </label>
-        <label class="strategy-option">
-          <input type="radio" name="strategy" value="compiled" checked />
-          <span class="strategy-card">
-            <span class="strategy-heading"><strong>B · Purpose-compiled workflow</strong><span class="arm-label">Proposed</span></span>
-            <p>The same selected model handles one narrow language task; a client-side Purpose Pack validates and executes the MCP workflow.</p>
-            <span class="strategy-flow">complaint → narrow model task → validated plan → MCP tools</span>
-          </span>
-        </label>
-      </div>
-      <p class="variable-note"><strong>Independent variable:</strong> direct model autonomy vs. purpose-compiled orchestration. No MCP server changes.</p>
-      <p id="status">Detecting available inference backends...</p>
-      <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
-      <label class="field-label" for="input">Civic issue</label>
-      <div class="input-row">
-        <textarea id="input" placeholder="e.g. There's a car blocking the bike lane on Main and Second" disabled></textarea>
-        <button id="mic" title="Speak instead" disabled>🎤</button>
-      </div>
-      <button id="go" disabled>Run B · Purpose-compiled workflow</button>
-    </div>
 
-    <div id="output" class="panel" style="display:none">
-      <h2 id="stepLabel">1. Model inference</h2>
-      <pre id="extracted"></pre>
-      <h2>2. MCP tool call (real request sent)</h2>
-      <pre id="mcpCall"></pre>
-      <h2>3. Result — real Boston 311 data</h2>
-      <div id="mcpResult"></div>
-      <h2>4. Measured execution</h2>
-      <div id="runMetrics" class="metrics-grid"></div>
-    </div>
-
-    <div class="panel">
-      <h2 style="margin-top:0">A/B comparison</h2>
-      <p class="lede" style="font-size:13px;margin-bottom:12px">Run the same report once in each arm with <strong id="comparisonModel">the selected model</strong>. Results are filtered by model; complaint text is not stored.</p>
-      <div class="comparison-grid">
-        <div class="comparison-card">
-          <h3>A · Direct model baseline</h3>
-          <p class="description">Raw tool descriptions; model chooses the calls</p>
-          <div id="directOutcome" class="outcome">Not run yet</div>
+      <div class="panel">
+        <div class="model-picker">
+          <label class="field-label" for="backendTier">Inference backend</label>
+          <select id="backendTier" disabled>
+            <option value="">Detecting available backends...</option>
+          </select>
+          <p class="model-note" id="backendNote">Checking WebGPU and local Ollama...</p>
         </div>
-        <div class="comparison-card compiled">
-          <h3>B · Purpose-compiled workflow</h3>
-          <p class="description">Narrow model task; validated code runs the plan</p>
-          <div id="compiledOutcome" class="outcome">Not run yet</div>
+        <div id="byokFields" class="model-picker" style="display:none">
+          <label class="field-label" for="byokProvider">Provider</label>
+          <select id="byokProvider">
+            <option value="groq">Groq</option>
+            <option value="openrouter">OpenRouter</option>
+          </select>
+          <label class="field-label" for="byokKey" style="margin-top:10px">API key — stored only in this browser, sent only to the provider above</label>
+          <input id="byokKey" type="password" autocomplete="off" placeholder="Paste your API key" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
+          <label class="field-label" for="byokModelName" style="margin-top:10px">Model</label>
+          <input id="byokModelName" type="text" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
+          <button id="byokSave" type="button" style="margin-top:10px">Use this key</button>
+        </div>
+        <div class="model-picker" id="ollamaModelPicker" style="display:none">
+          <label class="field-label" for="ollamaModel">Local Ollama model — used by both arms</label>
+          <select id="ollamaModel" disabled>
+            <option>Discovering installed models...</option>
+          </select>
+          <p class="model-note">Loaded from your local Ollama service at <code id="ollamaEndpoint"></code>. Changing the model filters the comparison to that model.</p>
+        </div>
+        <p class="experiment-question"><strong>Choose an experiment arm</strong></p>
+        <div class="controlled-variables" aria-label="Controlled variables">
+          <div class="controlled-variable"><span>Same model</span><strong id="sameModelValue">Detecting backend...</strong></div>
+          <div class="controlled-variable"><span>Same task</span><strong>Find related 311 reports</strong></div>
+          <div class="controlled-variable"><span>Same tools</span><strong>Live, unchanged MCP server</strong></div>
+        </div>
+        <div class="strategy-grid" role="radiogroup" aria-label="Experiment arm">
+          <label class="strategy-option">
+            <input type="radio" name="strategy" value="direct" />
+            <span class="strategy-card">
+              <span class="strategy-heading"><strong>A · Direct model baseline</strong><span class="arm-label">Baseline</span></span>
+              <p>The selected model sees raw <code>tools/list</code> descriptions and must decide which MCP tools to call and with what arguments.</p>
+              <span class="strategy-flow">complaint → selected model → MCP tools</span>
+            </span>
+          </label>
+          <label class="strategy-option">
+            <input type="radio" name="strategy" value="compiled" checked />
+            <span class="strategy-card">
+              <span class="strategy-heading"><strong>B · Purpose-compiled workflow</strong><span class="arm-label">Proposed</span></span>
+              <p>The same selected model handles one narrow language task; a client-side Purpose Pack validates and executes the MCP workflow.</p>
+              <span class="strategy-flow">complaint → narrow model task → validated plan → MCP tools</span>
+            </span>
+          </label>
+        </div>
+        <p class="variable-note"><strong>Independent variable:</strong> direct model autonomy vs. purpose-compiled orchestration. No MCP server changes.</p>
+        <p id="status">Detecting available inference backends...</p>
+        <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
+        <label class="field-label" for="input">Civic issue</label>
+        <div class="input-row">
+          <textarea id="input" placeholder="e.g. There's a car blocking the bike lane on Main and Second" disabled></textarea>
+          <button id="mic" title="Speak instead" disabled>🎤</button>
+        </div>
+        <button id="go" disabled>Run B · Purpose-compiled workflow</button>
+      </div>
+    </section>
+
+    <section id="section-purpose-pack" class="section-panel" role="tabpanel" aria-labelledby="section-tab-purpose-pack" data-section-panel="purpose-pack" hidden>
+      <div class="panel purpose-pack-panel">
+        <div class="purpose-pack-heading">
+          <div>
+            <h2 style="margin-top:0">Purpose Pack currently in use</h2>
+            <p>Edit the client-side workflow policy below. Revisions are validated against the live MCP tool schemas before they can replace the active plan.</p>
+          </div>
+          <span id="purposePackSource" class="purpose-pack-source">Loading bundled pack…</span>
+        </div>
+        <div id="purposePackSummary" class="purpose-pack-summary" aria-label="Purpose Pack summary"></div>
+        <label class="field-label" for="purposePackEditor">Purpose Pack JSON</label>
+        <textarea id="purposePackEditor" class="purpose-pack-editor" spellcheck="false" disabled>Loading Purpose Pack…</textarea>
+        <div class="purpose-pack-actions">
+          <button id="applyPurposePack" type="button" disabled>Apply revisions</button>
+          <button id="resetPurposePack" class="secondary-action" type="button" disabled>Reset to bundled pack</button>
+        </div>
+        <div id="purposePackEditorStatus" class="purpose-pack-editor-status" role="status">Waiting for MCP tool discovery…</div>
+        <p class="purpose-pack-note">Unsaved edits are automatically validated and applied before the next Arm B run. Arm A continues to use the raw MCP tool descriptions.</p>
+      </div>
+    </section>
+
+    <section id="section-trace" class="section-panel" role="tabpanel" aria-labelledby="section-tab-trace" data-section-panel="trace" hidden>
+      <div class="panel">
+        <h2 id="stepLabel" style="margin-top:0">1. Model inference</h2>
+        <pre id="extracted">Run an experiment to inspect the model's decision or extraction.</pre>
+        <h2>2. MCP tool call (real request sent)</h2>
+        <pre id="mcpCall">The live MCP request trace will appear here.</pre>
+      </div>
+    </section>
+
+    <section id="section-result" class="section-panel" role="tabpanel" aria-labelledby="section-tab-result" data-section-panel="result" hidden>
+      <div class="panel">
+        <h2 style="margin-top:0">3. Result — real Boston 311 data</h2>
+        <div id="mcpResult"><div class="section-empty">Run an experiment to display live Boston 311 reports.</div></div>
+      </div>
+    </section>
+
+    <section id="section-comparison" class="section-panel" role="tabpanel" aria-labelledby="section-tab-comparison" data-section-panel="comparison" hidden>
+      <div class="panel">
+        <h2 style="margin-top:0">A/B comparison</h2>
+        <p class="lede" style="font-size:14px;margin-bottom:16px">Run the same report once in each arm with <strong id="comparisonModel">the selected model</strong>. Results are filtered by model; complaint text is not stored.</p>
+        <div class="comparison-grid">
+          <div class="comparison-card">
+            <h3>A · Direct model baseline</h3>
+            <p class="description">Raw tool descriptions; model chooses the calls</p>
+            <div id="directOutcome" class="outcome">Not run yet</div>
+          </div>
+          <div class="comparison-card compiled">
+            <h3>B · Purpose-compiled workflow</h3>
+            <p class="description">Narrow model task; validated code runs the plan</p>
+            <div id="compiledOutcome" class="outcome">Not run yet</div>
+          </div>
+        </div>
+        <div id="comparisonReading" class="comparison-reading">Run both arms to reveal the latest head-to-head outcome.</div>
+        <div id="runMetrics" class="metrics-grid" hidden></div>
+      </div>
+    </section>
+
+    <section id="section-metrics" class="section-panel" role="tabpanel" aria-labelledby="section-tab-metrics" data-section-panel="metrics" hidden>
+      <div class="panel">
+        <div id="comparisonMetrics" class="ab-dashboard" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="section-history" class="section-panel" role="tabpanel" aria-labelledby="section-tab-history" data-section-panel="history" hidden>
+      <div class="panel">
+        <h2 style="margin-top:0">Recent measured runs</h2>
+        <div style="overflow-x:auto">
+          <table class="history">
+            <thead><tr><th>Strategy</th><th>Status</th><th>Category</th><th>Total</th><th>Model work</th><th>Tokens in/out</th><th>Model calls</th><th>MCP calls</th></tr></thead>
+            <tbody id="runHistory"></tbody>
+          </table>
         </div>
       </div>
-      <div id="comparisonReading" class="comparison-reading">Run both arms to reveal the latest head-to-head outcome.</div>
-      <h2>Recent measured runs</h2>
-      <div style="overflow-x:auto">
-        <table class="history">
-          <thead><tr><th>Strategy</th><th>Status</th><th>Category</th><th>Total</th><th>Model work</th><th>Tokens in/out</th><th>Model calls</th><th>MCP calls</th></tr></thead>
-          <tbody id="runHistory"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
 
     <footer class="note">Sundai Hack 138 · MIT — inference stays on-device or with a provider you chose; the MCP call is real and live.</footer>
   </div>
@@ -319,22 +485,72 @@
         navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW registration failed', e))
       })
     }
+
+    const applicationTabs = [...document.querySelectorAll('.section-tab')]
+    const applicationPanels = [...document.querySelectorAll('[data-section-panel]')]
+    const applicationTabList = document.querySelector('.section-tabs')
+    const validSections = applicationTabs.map((tab) => tab.dataset.section)
+
+    function revealApplicationTab(tab) {
+      const listBounds = applicationTabList.getBoundingClientRect()
+      const tabBounds = tab.getBoundingClientRect()
+      if (tabBounds.left < listBounds.left) applicationTabList.scrollLeft -= listBounds.left - tabBounds.left + 8
+      if (tabBounds.right > listBounds.right) applicationTabList.scrollLeft += tabBounds.right - listBounds.right + 8
+    }
+
+    function selectApplicationSection(section, { focus = false, updateHash = true, scroll = false } = {}) {
+      const selectedIndex = Math.max(0, validSections.indexOf(section))
+      const selectedSection = validSections[selectedIndex]
+      applicationTabs.forEach((tab, index) => {
+        const selected = index === selectedIndex
+        tab.setAttribute('aria-selected', String(selected))
+        tab.tabIndex = selected ? 0 : -1
+      })
+      applicationPanels.forEach((panel) => {
+        const selected = panel.dataset.sectionPanel === selectedSection
+        panel.hidden = !selected
+        panel.setAttribute('aria-hidden', String(!selected))
+      })
+      revealApplicationTab(applicationTabs[selectedIndex])
+      if (focus) applicationTabs[selectedIndex].focus()
+      if (scroll) document.querySelector('.section-tabs-shell').scrollIntoView({ block: 'start' })
+      if (updateHash) history.replaceState(null, '', `#${selectedSection}`)
+    }
+
+    window.selectAppSection = (section) => selectApplicationSection(section, { scroll: true })
+    applicationTabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => selectApplicationSection(tab.dataset.section, { scroll: true }))
+      tab.addEventListener('keydown', (event) => {
+        let nextIndex = null
+        if (event.key === 'ArrowRight') nextIndex = (index + 1) % applicationTabs.length
+        if (event.key === 'ArrowLeft') nextIndex = (index - 1 + applicationTabs.length) % applicationTabs.length
+        if (event.key === 'Home') nextIndex = 0
+        if (event.key === 'End') nextIndex = applicationTabs.length - 1
+        if (nextIndex === null) return
+        event.preventDefault()
+        selectApplicationSection(validSections[nextIndex], { focus: true, scroll: true })
+      })
+    })
+    window.addEventListener('hashchange', () => {
+      const section = location.hash.slice(1)
+      if (validSections.includes(section)) selectApplicationSection(section, { updateHash: false })
+    })
+    selectApplicationSection(validSections.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'experiment', { updateHash: false })
   </script>
   <script type="module">
     import { mcpCallTool, mcpInitialize, mcpListTools } from './mcp-client.js'
     import { compilePurposePack, executePlan, loadPurposePack } from './purpose-compiler.js'
     import { describeDirectFailure, parseDirectDecision, runDirectAgent } from './direct-agent.js'
-    import { createRunMetrics, loadRuns } from './run-metrics.js'
+    import { clearRuns, createRunMetrics, loadRuns } from './run-metrics.js'
     import { classifyCategory, parseExtraction } from './civic-normalizer.js'
     // Backend resolver lives in its own product repo (qwickapps/jsai), not
-    // in this hackathon demo repo — see qwickapps/jsai for why. Pinned to
-    // an exact commit SHA, not @main: jsDelivr's branch-tracking GitHub
-    // mirror lags real pushes by an unpredictable amount (confirmed live —
-    // GitHub had the fix, jsDelivr's @main still served the old file
-    // minutes later), while SHA-pinned URLs are immutable and fetch fresh
-    // immediately. Bump this SHA by hand after any jsai change.
-    import { DEFAULT_OLLAMA_URL, directDecisionFormat, listOllamaModels, ollamaModelLabel, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@8ea03a2ef57031b4f8ce03a087a85c14020e7bf7/ollama-client.js'
-    import * as backend from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@8ea03a2ef57031b4f8ce03a087a85c14020e7bf7/backend-selector.js'
+    // in this hackathon demo repo. Pinned to an exact commit SHA, not
+    // @main: jsDelivr's branch-tracking GitHub mirror lags real pushes by
+    // an unpredictable amount (confirmed live), while SHA-pinned URLs are
+    // immutable and fetch fresh immediately. Bump this SHA by hand after
+    // any jsai change.
+    import { DEFAULT_OLLAMA_URL, directDecisionFormat, listOllamaModels, ollamaModelLabel, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@e0ea80c/ollama-client.js'
+    import * as backend from 'https://cdn.jsdelivr.net/gh/qwickapps/jsai@e0ea80c/backend-selector.js'
 
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
@@ -342,10 +558,12 @@
     const OLLAMA_SERVER_URL = window.OLLAMA_SERVER_URL || DEFAULT_OLLAMA_URL
     const DEFAULT_MODEL = 'llama3.1:8b'
     const MODEL_STORAGE_KEY = 'mcp-purpose-compiler-ollama-model-v1'
+    const PURPOSE_PACK_STORAGE_KEY = 'mcp-purpose-compiler-purpose-pack-v1'
     const statusEl = document.getElementById('status')
     const input = document.getElementById('input')
     const go = document.getElementById('go')
     const mic = document.getElementById('mic')
+    const clearAllButton = document.getElementById('clearAll')
     const modelSelect = document.getElementById('ollamaModel')
     const backendTierSelect = document.getElementById('backendTier')
     const backendNote = document.getElementById('backendNote')
@@ -357,13 +575,90 @@
     const byokSaveBtn = document.getElementById('byokSave')
     let activeTier = null
     let backendDetection = { webgpu: { available: false, reason: 'not checked yet' }, ollama: { available: false, reason: 'not checked yet' } }
+    const purposePackEditor = document.getElementById('purposePackEditor')
+    const purposePackEditorStatus = document.getElementById('purposePackEditorStatus')
+    const purposePackSource = document.getElementById('purposePackSource')
+    const applyPurposePackButton = document.getElementById('applyPurposePack')
+    const resetPurposePackButton = document.getElementById('resetPurposePack')
     const strategyOptions = [...document.querySelectorAll('input[name="strategy"]')]
     const purposeStatus = document.getElementById('purposeStatus')
     const PURPOSE_PACK_URL = './purpose-packs/boston-311-related-reports.json'
     let purposePack
+    let bundledPurposePack
     let compiledPlan
     let mcpTools = []
     let mcpReady
+    let purposePackDirty = false
+    let activeComparisonMetricKey = 'workflow-completion'
+
+    function renderPurposePackSummary(pack, plan) {
+      const values = [
+        ['Task', pack.task_id],
+        ['Workflow steps', plan.steps.length],
+        ['Required tools', pack.required_tools.join(', ') || 'none'],
+        ['Call limits', `${plan.limits.maxModelCalls} model · ${plan.limits.maxMcpCalls} MCP`],
+      ]
+      const items = values.map(([label, value]) => {
+        const item = document.createElement('div')
+        const name = document.createElement('span')
+        const content = document.createElement('strong')
+        item.className = 'purpose-pack-summary-item'
+        name.textContent = label
+        content.textContent = value
+        item.append(name, content)
+        return item
+      })
+      document.getElementById('purposePackSummary').replaceChildren(...items)
+    }
+
+    function setPurposePackEditorStatus(message, state = '') {
+      purposePackEditorStatus.className = `purpose-pack-editor-status${state ? ` ${state}` : ''}`
+      purposePackEditorStatus.textContent = message
+    }
+
+    function activatePurposePack(pack, plan, source, { persist = false, updateEditor = true } = {}) {
+      purposePack = pack
+      compiledPlan = plan
+      purposePackDirty = false
+      if (persist) localStorage.setItem(PURPOSE_PACK_STORAGE_KEY, JSON.stringify(pack))
+      if (updateEditor) purposePackEditor.value = JSON.stringify(pack, null, 2)
+      purposePackSource.textContent = source
+      renderPurposePackSummary(pack, plan)
+      purposePackEditor.disabled = false
+      applyPurposePackButton.disabled = false
+      resetPurposePackButton.disabled = false
+      updatePurposeStatus()
+    }
+
+    async function applyPurposePackEdits() {
+      applyPurposePackButton.disabled = true
+      resetPurposePackButton.disabled = true
+      try {
+        await ensureMcpReady()
+        const revisedPack = JSON.parse(purposePackEditor.value)
+        const revisedPlan = compilePurposePack(revisedPack, mcpTools)
+        activatePurposePack(revisedPack, revisedPlan, 'User revision', { persist: true })
+        setPurposePackEditorStatus(`Revision applied: ${revisedPlan.steps.length} validated steps will be used by subsequent Arm B runs.`, 'ready')
+        return revisedPlan
+      } catch (error) {
+        setPurposePackEditorStatus(`Revision rejected; the last valid Purpose Pack remains active. ${error.message}`, 'error')
+        throw error
+      } finally {
+        applyPurposePackButton.disabled = false
+        resetPurposePackButton.disabled = false
+      }
+    }
+
+    function resetPurposePackToBundled() {
+      localStorage.removeItem(PURPOSE_PACK_STORAGE_KEY)
+      purposePackDirty = false
+      if (!bundledPurposePack || !mcpTools.length) return null
+      const bundledPlan = compilePurposePack(bundledPurposePack, mcpTools)
+      activatePurposePack(bundledPurposePack, bundledPlan, 'Bundled pack')
+      setPurposePackEditorStatus('Bundled Purpose Pack restored and active.', 'ready')
+      return bundledPlan
+    }
+
     async function discoverAndCompile() {
       purposeStatus.className = 'purpose-status'
       purposeStatus.textContent = 'Discovering MCP tools and compiling local Purpose Pack...'
@@ -373,16 +668,37 @@
           mcpInitialize(MCP_SERVER_URL),
         ])
         const tools = await mcpListTools(MCP_SERVER_URL)
-        const plan = compilePurposePack(pack, tools)
-        purposePack = pack
+        bundledPurposePack = pack
         mcpTools = tools
-        compiledPlan = plan
+        let activePack = pack
+        let source = 'Bundled pack'
+        let savedRevisionError = null
+        const savedRevision = localStorage.getItem(PURPOSE_PACK_STORAGE_KEY)
+        if (savedRevision) {
+          try {
+            activePack = JSON.parse(savedRevision)
+            compilePurposePack(activePack, tools)
+            source = 'Saved user revision'
+          } catch (error) {
+            savedRevisionError = error
+            localStorage.removeItem(PURPOSE_PACK_STORAGE_KEY)
+            activePack = pack
+          }
+        }
+        const plan = compilePurposePack(activePack, tools)
+        activatePurposePack(activePack, plan, source)
         purposeStatus.className = 'purpose-status ready'
         updatePurposeStatus()
+        if (savedRevisionError) {
+          setPurposePackEditorStatus(`Saved revision was rejected; the bundled pack is active. ${savedRevisionError.message}`, 'error')
+        } else {
+          setPurposePackEditorStatus(`${source} validated against ${tools.length} live MCP tools and is active.`, 'ready')
+        }
         return plan
       } catch (error) {
         purposeStatus.className = 'purpose-status error'
         purposeStatus.textContent = `Purpose Pack unavailable: ${error.message}`
+        setPurposePackEditorStatus(`Purpose Pack unavailable: ${error.message}`, 'error')
         throw error
       }
     }
@@ -563,6 +879,16 @@
     mcpReady.catch(() => {})
     initBackend()
 
+    purposePackEditor.addEventListener('input', () => {
+      purposePackDirty = true
+      setPurposePackEditorStatus('Unsaved revision. Apply it now, or Arm B will validate and apply it before the next run.', 'dirty')
+    })
+    applyPurposePackButton.addEventListener('click', () => applyPurposePackEdits().catch(() => {}))
+    resetPurposePackButton.addEventListener('click', () => {
+      try { resetPurposePackToBundled() }
+      catch (error) { setPurposePackEditorStatus(`Bundled pack could not be restored: ${error.message}`, 'error') }
+    })
+
     // Speech input — built into Chrome, no dependency. Degrades to
     // text-only silently if unsupported.
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -662,13 +988,14 @@ Output: rats behind the dumpster on Oak St`
     // Every backend-facing call goes through backend.chat(activeTier, ...) —
     // this is the only place index.html knows which tier is active. The
     // model identifier and any per-tier extras (ollamaUrl, byok settings)
-    // come from currentBackendArgs(), defined with the backend UI below.
-    async function compiledExtraction(rawText, model, metrics) {
+    // come from currentBackendArgs().
+    async function compiledExtraction(rawText, model, metrics, step) {
+      const purposeContext = step?.description ? `Purpose Pack model step: ${step.description}\n\n` : ''
       const response = await backend.chat(activeTier, {
         ...currentBackendArgs(),
         model,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: `${purposeContext}${SYSTEM_PROMPT}` },
           { role: 'user', content: `Input: ${rawText}` },
         ],
         maxTokens: 40,
@@ -807,11 +1134,137 @@ Output: rats behind the dumpster on Oak St`
         </div>`
     }
 
+    function formatComparisonValue(value, format) {
+      if (format === 'boolean') return value ? 'yes' : 'no'
+      if (format === 'duration') return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 1 : 2)} s` : `${Math.round(value)} ms`
+      if (format === 'decimal') return Number(value).toFixed(2).replace(/\.00$/, '')
+      return Math.round(value).toLocaleString()
+    }
+
+    function comparisonRatio(a, b, format) {
+      if (format === 'boolean') {
+        if (a === b) return a ? 'both passed' : 'both missed'
+        return b ? 'B leads' : 'A leads'
+      }
+      if (b === 0) return a === 0 ? 'A:B 0:0' : 'A:B ∞:1'
+      const ratio = a / b
+      return `A:B ${ratio.toFixed(ratio >= 10 ? 1 : 2).replace(/\.?0+$/, '')}:1`
+    }
+
+    function comparisonReading(metric, a, b) {
+      if (metric.format === 'boolean') {
+        if (a === b) return a ? 'Both arms achieved this outcome.' : 'Neither arm achieved this outcome.'
+        return `${b ? 'B' : 'A'} achieved this outcome; ${b ? 'A' : 'B'} did not.`
+      }
+      if (a === b) return a === 0 ? 'Neither arm used this resource.' : 'No measured difference.'
+      if (b === 0) return 'B eliminated this measured cost.'
+      if (a === 0) return 'Only B incurred this measured cost.'
+      const difference = Math.abs((b - a) / a * 100).toFixed(0)
+      return `B is ${difference}% ${b < a ? 'lower' : 'higher'} than A${metric.lowerIsBetter && b < a ? ' · favorable' : ''}.`
+    }
+
+    function comparisonMetricCard(metric) {
+      const a = Number(metric.a) || 0
+      const b = Number(metric.b) || 0
+      const maximum = Math.max(a, b, Number.EPSILON)
+      const aWidth = Math.max(a === 0 ? 0 : 3, a / maximum * 100)
+      const bWidth = Math.max(b === 0 ? 0 : 3, b / maximum * 100)
+      const favorable = metric.format === 'boolean' ? b && !a : metric.lowerIsBetter && b < a
+      return `
+        <article class="ab-metric">
+          <div class="ab-metric-top">
+            <div><span class="ab-metric-name">${metric.label}</span><span class="ab-metric-note">${metric.note}</span></div>
+            <span class="ab-ratio${favorable ? ' favorable' : ''}">${comparisonRatio(a, b, metric.format)}</span>
+          </div>
+          <div class="ab-series-list" aria-label="A ${formatComparisonValue(a, metric.format)}; B ${formatComparisonValue(b, metric.format)}">
+            <div class="ab-series a"><span class="ab-series-label">A</span><span class="ab-bar-track"><span class="ab-bar" style="width:${aWidth}%"></span></span><span class="ab-series-value">${formatComparisonValue(a, metric.format)}</span></div>
+            <div class="ab-series b"><span class="ab-series-label">B</span><span class="ab-bar-track"><span class="ab-bar" style="width:${bWidth}%"></span></span><span class="ab-series-value">${formatComparisonValue(b, metric.format)}</span></div>
+          </div>
+          <p class="ab-metric-reading">${comparisonReading(metric, a, b)}</p>
+        </article>`
+    }
+
+    function renderComparisonMetrics(direct, compiled) {
+      const dashboard = document.getElementById('comparisonMetrics')
+      if (!direct || !compiled) {
+        dashboard.innerHTML = `
+          <div class="ab-dashboard-head"><h2>Metric comparison</h2></div>
+          <div class="ab-dashboard-empty">Run both arms with the same report to display A:B ratios and comparative bars.</div>`
+        return
+      }
+      const directTokens = (Number(direct.promptTokens) || 0) + (Number(direct.outputTokens) || 0)
+      const compiledTokens = (Number(compiled.promptTokens) || 0) + (Number(compiled.outputTokens) || 0)
+      const metrics = [
+        { key: 'workflow-completion', label: 'Workflow completion', note: 'quality · higher is better', a: direct.status === 'passed', b: compiled.status === 'passed', format: 'boolean' },
+        { key: 'category-correctness', label: 'Category correctness', note: 'quality · higher is better', a: direct.categoryCorrect === true, b: compiled.categoryCorrect === true, format: 'boolean' },
+        { key: 'end-to-end-time', label: 'End-to-end time', note: 'wall time · lower is better', a: direct.durationMs, b: compiled.durationMs, format: 'duration', lowerIsBetter: true },
+        { key: 'model-time', label: 'Model inference time', note: 'Ollama work · lower is better', a: direct.modelDurationMs, b: compiled.modelDurationMs, format: 'duration', lowerIsBetter: true },
+        { key: 'non-model-time', label: 'Non-model time', note: 'MCP + client overhead · lower is better', a: Math.max(0, direct.durationMs - direct.modelDurationMs), b: Math.max(0, compiled.durationMs - compiled.modelDurationMs), format: 'duration', lowerIsBetter: true },
+        { key: 'total-tokens', label: 'Total tokens', note: 'prompt + output · lower is better', a: directTokens, b: compiledTokens, format: 'number', lowerIsBetter: true },
+        { key: 'prompt-tokens', label: 'Prompt tokens', note: 'input context · lower is better', a: direct.promptTokens, b: compiled.promptTokens, format: 'number', lowerIsBetter: true },
+        { key: 'output-tokens', label: 'Output tokens', note: 'generated tokens · lower is better', a: direct.outputTokens, b: compiled.outputTokens, format: 'number', lowerIsBetter: true },
+        { key: 'model-calls', label: 'Model calls', note: 'per run · lower is better', a: direct.modelCalls, b: compiled.modelCalls, format: 'decimal', lowerIsBetter: true },
+        { key: 'mcp-calls', label: 'MCP calls', note: 'per run · task-dependent', a: direct.mcpCalls, b: compiled.mcpCalls, format: 'decimal' },
+        { key: 'repair-calls', label: 'Repair calls', note: 'recovery work · lower is better', a: direct.repairCalls, b: compiled.repairCalls, format: 'decimal', lowerIsBetter: true }
+      ]
+      dashboard.innerHTML = `
+        <div class="ab-dashboard-head">
+          <h2>Latest head-to-head metrics</h2>
+          <div class="ab-legend"><span><i></i>A · direct</span><span><i class="b"></i>B · purpose compiled</span></div>
+        </div>
+        <div class="ab-tabs">
+          <div class="ab-tab-list" role="tablist" aria-label="A/B comparison metrics">
+            ${metrics.map((metric) => `<button class="ab-tab" id="ab-tab-${metric.key}" type="button" role="tab" aria-controls="abMetricPanel" aria-selected="false" tabindex="-1" data-metric-key="${metric.key}">${metric.label}</button>`).join('')}
+          </div>
+          <div id="abMetricPanel" class="ab-tab-panel" role="tabpanel"></div>
+          <p class="ab-ratio-help"><strong>A:B ratios are normalized to B = 1.</strong> For lower-is-better metrics, A:B 2.4:1 means the direct baseline consumed 2.4× the resource used by the compiled workflow. Bars are scaled within each metric.</p>
+        </div>`
+
+      const tabs = [...dashboard.querySelectorAll('[role="tab"]')]
+      const tabList = dashboard.querySelector('[role="tablist"]')
+      const panel = dashboard.querySelector('#abMetricPanel')
+      const revealTab = (tab) => {
+        const listBounds = tabList.getBoundingClientRect()
+        const tabBounds = tab.getBoundingClientRect()
+        if (tabBounds.left < listBounds.left) tabList.scrollLeft -= listBounds.left - tabBounds.left + 8
+        if (tabBounds.right > listBounds.right) tabList.scrollLeft += tabBounds.right - listBounds.right + 8
+      }
+      const selectMetric = (key, moveFocus = false) => {
+        const selectedIndex = Math.max(0, metrics.findIndex((metric) => metric.key === key))
+        const selectedMetric = metrics[selectedIndex]
+        activeComparisonMetricKey = selectedMetric.key
+        tabs.forEach((tab, index) => {
+          const selected = index === selectedIndex
+          tab.setAttribute('aria-selected', String(selected))
+          tab.tabIndex = selected ? 0 : -1
+        })
+        panel.setAttribute('aria-labelledby', `ab-tab-${selectedMetric.key}`)
+        panel.innerHTML = comparisonMetricCard(selectedMetric)
+        if (moveFocus) tabs[selectedIndex].focus()
+        revealTab(tabs[selectedIndex])
+      }
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => selectMetric(tab.dataset.metricKey))
+        tab.addEventListener('keydown', (event) => {
+          let nextIndex = null
+          if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length
+          if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length
+          if (event.key === 'Home') nextIndex = 0
+          if (event.key === 'End') nextIndex = tabs.length - 1
+          if (nextIndex === null) return
+          event.preventDefault()
+          selectMetric(metrics[nextIndex].key, true)
+        })
+      })
+      selectMetric(activeComparisonMetricKey)
+    }
+
     function renderComparison(runs) {
       const direct = runs.find((run) => run.strategy === 'direct')
       const compiled = runs.find((run) => run.strategy === 'compiled')
       renderOutcome('directOutcome', direct)
       renderOutcome('compiledOutcome', compiled)
+      renderComparisonMetrics(direct, compiled)
 
       const reading = document.getElementById('comparisonReading')
       if (!direct || !compiled) {
@@ -869,7 +1322,37 @@ Output: rats behind the dumpster on Oak St`
       updateRunButton()
       updatePurposeStatus()
     }
+    async function clearAllState() {
+      clearAllButton.disabled = true
+      try {
+        clearRuns()
+        localStorage.removeItem(MODEL_STORAGE_KEY)
+        localStorage.removeItem(PURPOSE_PACK_STORAGE_KEY)
+        input.value = ''
+        mic.classList.remove('listening')
+        strategyOptions.forEach((option) => { option.checked = option.value === 'compiled' })
+        const defaultModel = [...modelSelect.options].find((option) => option.value === DEFAULT_MODEL)?.value
+          || modelSelect.options[0]?.value
+        const modelChanged = Boolean(defaultModel && defaultModel !== selectedModel())
+        if (defaultModel) modelSelect.value = defaultModel
+        activeComparisonMetricKey = 'workflow-completion'
+        document.getElementById('stepLabel').textContent = '1. Model inference'
+        document.getElementById('extracted').textContent = "Run an experiment to inspect the model's decision or extraction."
+        document.getElementById('mcpCall').textContent = 'The live MCP request trace will appear here.'
+        document.getElementById('mcpResult').innerHTML = '<div class="section-empty">Run an experiment to display live Boston 311 reports.</div>'
+        document.getElementById('runMetrics').innerHTML = ''
+        resetPurposePackToBundled()
+        updateSelectedArm()
+        updateModelContext()
+        window.selectAppSection('experiment')
+        if (modelChanged) await prepareSelectedModel()
+        if (!input.disabled) input.focus()
+      } finally {
+        clearAllButton.disabled = false
+      }
+    }
     strategyOptions.forEach((option) => option.addEventListener('change', updateSelectedArm))
+    clearAllButton.addEventListener('click', () => clearAllState())
     modelSelect.addEventListener('change', async () => {
       localStorage.setItem(MODEL_STORAGE_KEY, selectedModel())
       updateModelContext()
@@ -880,13 +1363,14 @@ Output: rats behind the dumpster on Oak St`
       const text = input.value.trim()
       if (!text) return
       go.disabled = true
+      clearAllButton.disabled = true
       modelSelect.disabled = true
       const selectedStrategyValue = selectedStrategy()
       const runModel = selectedModel()
       const expectedCategory = classifyCategory(text)
       const metrics = createRunMetrics(selectedStrategyValue, runModel)
       go.textContent = selectedStrategyValue === 'compiled' ? 'Running B · Purpose-compiled workflow...' : 'Running A · Direct model baseline...'
-      document.getElementById('output').style.display = 'block'
+      window.selectAppSection('trace')
       document.getElementById('stepLabel').textContent = selectedStrategyValue === 'compiled'
         ? '1. Purpose-compiled extraction (running locally...)'
         : '1. Direct agent decision (running from raw tools/list...)'
@@ -896,12 +1380,13 @@ Output: rats behind the dumpster on Oak St`
       document.getElementById('runMetrics').innerHTML = ''
       try {
         await ensureMcpReady()
+        if (selectedStrategyValue === 'compiled' && purposePackDirty) await applyPurposePackEdits()
         let execution
         if (selectedStrategyValue === 'compiled') {
           execution = await executePlan(
             compiledPlan,
             {
-              model: async (_step, state) => compiledExtraction(state.input.complaint, runModel, metrics),
+              model: async (step, state) => compiledExtraction(state.input.complaint, runModel, metrics, step),
               mcp: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
             },
             { complaint: text },
@@ -974,6 +1459,7 @@ Output: rats behind the dumpster on Oak St`
         }
       } finally {
         go.disabled = false
+        clearAllButton.disabled = false
         modelSelect.disabled = false
         updateRunButton()
       }

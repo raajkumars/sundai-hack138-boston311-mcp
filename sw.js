@@ -14,7 +14,7 @@
 //
 // CACHE_NAME is bumped on every shell change to evict previously-cached
 // entries for anyone (Ted, @raaj, a judge) who visited an earlier build.
-const CACHE_NAME = 'sundai-311-mcp-v4'
+const CACHE_NAME = 'sundai-311-mcp-v5'
 const SHELL = [
   'index.html',
   'manifest.json',
