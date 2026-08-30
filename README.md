@@ -17,6 +17,16 @@ Qwen2.5-0.5B-Instruct — swapped down for cold-load time, see "Model
 history" below; multi-field model output also proved unreliable at this
 size, see "Extraction design".)
 
+## Live URLs
+
+- PWA: https://sundai-hack138-2-gw.route.qwickforge.com/
+- MCP server (streamable HTTP): https://boston311-mcp-gw.route.qwickforge.com/mcp
+  — `GET .../health` for a liveness check without speaking MCP.
+
+The live PWA has `window.MCP_SERVER_URL` baked in at deploy time, pointing
+at the live MCP server above — deploy-time injection, source stays on
+`localhost` for local dev (see "Local run").
+
 ## Layout
 
 - `index.html`, `manifest.json`, `sw.js`, `mcp-client.js`, `vendor/`,
@@ -55,8 +65,12 @@ python3 -m http.server 8899                 # PWA, separate terminal
 ```
 
 Open http://localhost:8899 — the PWA's `MCP_SERVER_URL` defaults to
-`http://localhost:8311/mcp`; override via `window.MCP_SERVER_URL` before
-`index.html`'s module script runs, or edit the constant, once hosted.
+`http://localhost:8311/mcp`.
+
+**Don't want to run the MCP server locally?** Point the local PWA at the
+live one instead — before `index.html` loads, in the browser console or a
+tiny inline script: `window.MCP_SERVER_URL = 'https://boston311-mcp-gw.route.qwickforge.com/mcp'`.
+CORS on the live server is open (`*`), so this works from `localhost` too.
 
 ## Extraction design
 
