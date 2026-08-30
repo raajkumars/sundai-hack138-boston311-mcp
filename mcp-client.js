@@ -10,16 +10,33 @@
 
 let nextId = 1
 
+// The MCP server's host runs other jobs (a DB backup can spike its load) —
+// a slow response should degrade the demo, not hang it. 8s is generous for
+// a live 311 lookup on a healthy host, short enough to fail visibly on
+// stage instead of standing there.
+const RPC_TIMEOUT_MS = 8000
+
 async function rpc(serverUrl, method, params) {
   const id = nextId++
-  const res = await fetch(serverUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json, text/event-stream',
-    },
-    body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS)
+  let res
+  try {
+    res = await fetch(serverUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error(`MCP ${method}: timed out after ${RPC_TIMEOUT_MS}ms`)
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
   if (!res.ok) throw new Error(`MCP ${method} -> HTTP ${res.status}`)
   const text = await res.text()
   const dataLine = text.split('\n').find((l) => l.startsWith('data: '))

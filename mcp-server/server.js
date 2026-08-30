@@ -16,8 +16,25 @@ const PORT = process.env.PORT || 8311
 // Fetched once at boot and cached — 10 small objects, never refetched, so a
 // request never blocks on an extra round trip to Boston's services list.
 let SERVICES = []
+
+// Bounds every outbound call to Boston's API — this host runs other jobs
+// (a DB backup can spike load) and Boston's own API could be slow too;
+// either way a tool call should fail fast, not hang the request open.
+async function fetchWithTimeout(url, ms = 5000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error(`upstream timed out after ${ms}ms: ${url}`)
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function loadServices() {
-  const res = await fetch(`${OPEN311_BASE}/services.json`)
+  const res = await fetchWithTimeout(`${OPEN311_BASE}/services.json`)
   if (!res.ok) throw new Error(`services.json -> HTTP ${res.status}`)
   SERVICES = await res.json()
   console.log(`Loaded ${SERVICES.length} Boston 311 service codes`)
@@ -49,7 +66,7 @@ async function queryRecent({ category, location }, limit = 5) {
   // looking demo. locationMatched tells the caller which happened; nothing
   // here is faked, it's a real query either way.
   const params = new URLSearchParams({ service_code: svc.service_code, page_size: String(location ? 25 : limit) })
-  const res = await fetch(`${OPEN311_BASE}/requests.json?${params}`)
+  const res = await fetchWithTimeout(`${OPEN311_BASE}/requests.json?${params}`)
   if (!res.ok) throw new Error(`requests.json -> HTTP ${res.status}`)
   const all = await res.json()
   const filtered = location

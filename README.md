@@ -43,6 +43,15 @@ Two tools, both read-only against Boston 311 (no real tickets filed):
 Deploy notes: memory-light (~96MB RSS idle), purely request-driven (no
 polling / no busy loop) — verified locally. `GET /health` for health checks.
 
+## Rehearsed categories
+
+Verified live volume just before showtime, not assumed: **Illegal Parking**
+is reliably very active (new reports every few minutes). Traffic Signal is
+sparse (0 open reports when last checked) — do NOT rehearse on it. Backup
+categories confirmed to have live data: Abandoned Vehicle, Damaged Sign
+(Sign Repair). Re-check volume close to presentation time; city 311 traffic
+shifts through the day.
+
 ## Demo script (90s)
 
 1. "Small model on-device, real MCP server, real city data." (10s)
