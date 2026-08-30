@@ -199,12 +199,14 @@
     <h1>Can orchestration make a local model better at MCP?</h1>
     <p class="lede">
       <strong>This demo is a controlled comparison.</strong> Give the same civic
-      issue to the same selected Ollama model and the same live Boston 311 MCP server.
-      Change only how the work is orchestrated.
+      issue to the same selected model and the same live Boston 311 MCP server.
+      Change only how the work is orchestrated. The model can run in-browser
+      via WebGPU, through a local Ollama install, or via your own API key —
+      whichever is available.
     </p>
 
     <div class="badge-row">
-      <span id="modelBadge" class="feature-badge">⚡ Local model via Ollama</span>
+      <span id="modelBadge" class="feature-badge">⚡ No backend ready</span>
       <span class="feature-badge">🧭 Client-side Purpose Pack</span>
       <span class="feature-badge">🔌 Unchanged MCP server</span>
       <span class="feature-badge">🏛️ Live Boston 311 data</span>
@@ -212,6 +214,25 @@
 
     <div class="panel">
       <div class="model-picker">
+        <label class="field-label" for="backendTier">Inference backend</label>
+        <select id="backendTier" disabled>
+          <option value="">Detecting available backends...</option>
+        </select>
+        <p class="model-note" id="backendNote">Checking WebGPU and local Ollama...</p>
+      </div>
+      <div id="byokFields" class="model-picker" style="display:none">
+        <label class="field-label" for="byokProvider">Provider</label>
+        <select id="byokProvider">
+          <option value="groq">Groq</option>
+          <option value="openrouter">OpenRouter</option>
+        </select>
+        <label class="field-label" for="byokKey" style="margin-top:10px">API key — stored only in this browser, sent only to the provider above</label>
+        <input id="byokKey" type="password" autocomplete="off" placeholder="Paste your API key" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
+        <label class="field-label" for="byokModelName" style="margin-top:10px">Model</label>
+        <input id="byokModelName" type="text" style="width:100%;font:inherit;font-size:14px;color:var(--text-0);background:var(--bg-0);border:1px solid var(--border);border-radius:10px;padding:11px 12px" />
+        <button id="byokSave" type="button" style="margin-top:10px">Use this key</button>
+      </div>
+      <div class="model-picker" id="ollamaModelPicker" style="display:none">
         <label class="field-label" for="ollamaModel">Local Ollama model — used by both arms</label>
         <select id="ollamaModel" disabled>
           <option>Discovering installed models...</option>
@@ -220,7 +241,7 @@
       </div>
       <p class="experiment-question"><strong>Choose an experiment arm</strong></p>
       <div class="controlled-variables" aria-label="Controlled variables">
-        <div class="controlled-variable"><span>Same model</span><strong id="sameModelValue">Discovering Ollama...</strong></div>
+        <div class="controlled-variable"><span>Same model</span><strong id="sameModelValue">Detecting backend...</strong></div>
         <div class="controlled-variable"><span>Same task</span><strong>Find related 311 reports</strong></div>
         <div class="controlled-variable"><span>Same tools</span><strong>Live, unchanged MCP server</strong></div>
       </div>
@@ -243,7 +264,7 @@
         </label>
       </div>
       <p class="variable-note"><strong>Independent variable:</strong> direct model autonomy vs. purpose-compiled orchestration. No MCP server changes.</p>
-      <p id="status">Connecting to local Ollama...</p>
+      <p id="status">Detecting available inference backends...</p>
       <div id="purposeStatus" class="purpose-status">Discovering MCP tools and compiling local Purpose Pack...</div>
       <label class="field-label" for="input">Civic issue</label>
       <div class="input-row">
@@ -254,7 +275,7 @@
     </div>
 
     <div id="output" class="panel" style="display:none">
-      <h2 id="stepLabel">1. Model inference (local Ollama)</h2>
+      <h2 id="stepLabel">1. Model inference</h2>
       <pre id="extracted"></pre>
       <h2>2. MCP tool call (real request sent)</h2>
       <pre id="mcpCall"></pre>
@@ -289,7 +310,7 @@
       </div>
     </div>
 
-    <footer class="note">Sundai Hack 138 · MIT — inference stays in local Ollama; the MCP call is real and live.</footer>
+    <footer class="note">Sundai Hack 138 · MIT — inference stays on-device or with a provider you chose; the MCP call is real and live.</footer>
   </div>
 
   <script>
@@ -305,7 +326,8 @@
     import { describeDirectFailure, parseDirectDecision, runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
     import { classifyCategory, parseExtraction } from './civic-normalizer.js'
-    import { DEFAULT_OLLAMA_URL, chatOllama, directDecisionFormat, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from './ollama-client.js'
+    import { DEFAULT_OLLAMA_URL, directDecisionFormat, listOllamaModels, ollamaModelLabel, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from './ollama-client.js'
+    import * as backend from './backend-selector.js'
 
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
@@ -318,6 +340,16 @@
     const go = document.getElementById('go')
     const mic = document.getElementById('mic')
     const modelSelect = document.getElementById('ollamaModel')
+    const backendTierSelect = document.getElementById('backendTier')
+    const backendNote = document.getElementById('backendNote')
+    const ollamaModelPicker = document.getElementById('ollamaModelPicker')
+    const byokFields = document.getElementById('byokFields')
+    const byokProviderSelect = document.getElementById('byokProvider')
+    const byokKeyInput = document.getElementById('byokKey')
+    const byokModelInput = document.getElementById('byokModelName')
+    const byokSaveBtn = document.getElementById('byokSave')
+    let activeTier = null
+    let backendDetection = { webgpu: { available: false, reason: 'not checked yet' }, ollama: { available: false, reason: 'not checked yet' } }
     const strategyOptions = [...document.querySelectorAll('input[name="strategy"]')]
     const purposeStatus = document.getElementById('purposeStatus')
     const PURPOSE_PACK_URL = './purpose-packs/boston-311-related-reports.json'
@@ -354,68 +386,175 @@
       return mcpReady
     }
 
+    const WEBGPU_MODEL_LABEL = 'SmolLM2-135M-Instruct (on-device, WebGPU)'
+    const BACKEND_LABELS = { webgpu: 'in-browser WebGPU', ollama: 'local Ollama', byok: 'your API key' }
+
     function selectedModel() {
+      if (activeTier === 'webgpu') return WEBGPU_MODEL_LABEL
+      if (activeTier === 'byok') return byokModelInput.value.trim() || backend.BYOK_PROVIDERS[byokProviderSelect.value]?.defaultModel || ''
       return modelSelect.value
+    }
+
+    // The one place every per-tier extra argument backend.chat() needs is
+    // assembled — keeps compiledExtraction/directGeneration tier-agnostic.
+    function currentBackendArgs() {
+      if (activeTier === 'ollama') return { ollamaUrl: OLLAMA_SERVER_URL }
+      if (activeTier === 'byok') {
+        const settings = backend.loadSettings()
+        return { byok: settings.byok }
+      }
+      return {}
     }
 
     function updateModelContext() {
       const model = selectedModel()
-      document.getElementById('sameModelValue').textContent = model ? `${model} · local Ollama` : 'No Ollama model selected'
-      document.getElementById('modelBadge').textContent = model ? `⚡ ${model}, local Ollama` : '⚡ Local model via Ollama'
+      const label = BACKEND_LABELS[activeTier] || 'no backend'
+      document.getElementById('sameModelValue').textContent = model ? `${model} · ${label}` : 'No backend ready'
+      document.getElementById('modelBadge').textContent = model ? `⚡ ${model}, ${label}` : '⚡ No backend ready'
       document.getElementById('comparisonModel').textContent = model || 'the selected model'
       renderRunHistory()
     }
 
+    // Bumped on every setActiveTier() call so a stale async load (e.g.
+    // WebGPU still downloading when the user switches to BYOK) can't
+    // overwrite a newer tier's status text after the fact.
+    let prepareGeneration = 0
+
     async function prepareSelectedModel() {
       const model = selectedModel()
-      if (!model) return
+      if (!model || !activeTier) return
+      const generation = prepareGeneration
+      const stale = () => generation !== prepareGeneration
       go.disabled = true
       input.disabled = true
       modelSelect.disabled = true
-      statusEl.className = ''
-      statusEl.textContent = `Loading ${model} into local Ollama memory...`
-      try {
-        const preload = await preloadOllamaModel(OLLAMA_SERVER_URL, model)
-        statusEl.className = 'ready'
-        statusEl.textContent = `${model} ready in local Ollama${preload.loadDurationMs ? ` (loaded in ${preload.loadDurationMs} ms)` : ''}. Both arms now start warm.`
-        input.disabled = false
-        go.disabled = false
-      } catch (error) {
-        statusEl.className = 'error'
-        statusEl.textContent = `Could not load ${model}: ${error.message}`
-      } finally {
-        modelSelect.disabled = false
+
+      if (activeTier === 'ollama') {
+        statusEl.className = ''
+        statusEl.textContent = `Loading ${model} into local Ollama memory...`
+        try {
+          const preload = await preloadOllamaModel(OLLAMA_SERVER_URL, model)
+          if (stale()) return
+          statusEl.className = 'ready'
+          statusEl.textContent = `${model} ready in local Ollama${preload.loadDurationMs ? ` (loaded in ${preload.loadDurationMs} ms)` : ''}. Both arms now start warm.`
+          input.disabled = false
+          go.disabled = false
+        } catch (error) {
+          if (!stale()) { statusEl.className = 'error'; statusEl.textContent = `Could not load ${model}: ${error.message}` }
+        } finally {
+          modelSelect.disabled = false
+        }
+        return
       }
+
+      if (activeTier === 'webgpu') {
+        statusEl.className = ''
+        statusEl.textContent = `Downloading ${model} to this device (one-time)...`
+        try {
+          await backend.chat('webgpu', {
+            messages: [{ role: 'user', content: 'ready' }],
+            maxTokens: 1,
+            onProgress: (p) => {
+              if (!stale() && p.status === 'progress') statusEl.textContent = `Downloading ${model} — ${Math.round(p.progress || 0)}%`
+            },
+          })
+          if (stale()) return
+          statusEl.className = 'ready'
+          statusEl.textContent = `${model} loaded — inference runs with 0 network calls from here.`
+          input.disabled = false
+          go.disabled = false
+        } catch (error) {
+          if (!stale()) { statusEl.className = 'error'; statusEl.textContent = `Could not load ${model}: ${error.message}` }
+        }
+        return
+      }
+
+      // byok: nothing to preload, it's a stateless per-call API request.
+      statusEl.className = 'ready'
+      statusEl.textContent = `Using ${model} via your API key. No local model, no download.`
+      input.disabled = false
+      go.disabled = false
     }
 
-    async function loadModels() {
-      try {
-        document.getElementById('ollamaEndpoint').textContent = OLLAMA_SERVER_URL
-        const models = await listOllamaModels(OLLAMA_SERVER_URL)
-        if (!models.length) throw new Error('Ollama is running but has no installed models. Run: ollama pull llama3.1:8b')
-
-        modelSelect.replaceChildren(...models.map((model) => {
-          const option = document.createElement('option')
-          option.value = model.name
-          option.textContent = ollamaModelLabel(model)
-          return option
-        }))
-        const requested = new URLSearchParams(window.location.search).get('model')
-        const remembered = localStorage.getItem(MODEL_STORAGE_KEY)
-        const preferred = [requested, remembered, DEFAULT_MODEL].find((name) => name && models.some((model) => model.name === name))
-        modelSelect.value = preferred || models[0].name
-        updateModelContext()
-        await prepareSelectedModel()
-      } catch (error) {
-        console.error('Local Ollama unavailable:', error)
-        statusEl.className = 'error'
-        statusEl.textContent = `${error.message}. Start Ollama locally and allow this page's origin if prompted.`
-        modelSelect.replaceChildren(new Option('Local Ollama unavailable', ''))
-      }
+    async function populateOllamaModels(models) {
+      document.getElementById('ollamaEndpoint').textContent = OLLAMA_SERVER_URL
+      modelSelect.replaceChildren(...models.map((model) => {
+        const option = document.createElement('option')
+        option.value = model.name
+        option.textContent = ollamaModelLabel(model)
+        return option
+      }))
+      const requested = new URLSearchParams(window.location.search).get('model')
+      const remembered = localStorage.getItem(MODEL_STORAGE_KEY)
+      const preferred = [requested, remembered, DEFAULT_MODEL].find((name) => name && models.some((model) => model.name === name))
+      modelSelect.value = preferred || models[0].name
     }
+
+    function applyTierUi(tier) {
+      ollamaModelPicker.style.display = tier === 'ollama' ? '' : 'none'
+      byokFields.style.display = tier === 'byok' ? '' : 'none'
+    }
+
+    async function setActiveTier(tier) {
+      prepareGeneration += 1
+      activeTier = tier
+      backendTierSelect.value = tier || ''
+      applyTierUi(tier)
+      updateModelContext()
+      if (tier === 'ollama' && backendDetection.ollama.available) await populateOllamaModels(backendDetection.ollama.models)
+      await prepareSelectedModel()
+    }
+
+    function renderBackendOptions() {
+      const opts = []
+      opts.push({ value: 'webgpu', label: 'In-browser WebGPU (no setup)', disabled: !backendDetection.webgpu.available })
+      opts.push({ value: 'ollama', label: 'Local Ollama', disabled: !backendDetection.ollama.available })
+      opts.push({ value: 'byok', label: 'My own API key (Groq / OpenRouter)', disabled: false })
+      backendTierSelect.replaceChildren(...opts.map((o) => {
+        const option = document.createElement('option')
+        option.value = o.value
+        option.textContent = o.disabled ? `${o.label} — unavailable` : o.label
+        option.disabled = o.disabled
+        return option
+      }))
+      backendTierSelect.disabled = false
+      backendNote.textContent = `WebGPU: ${backendDetection.webgpu.reason}. Ollama: ${backendDetection.ollama.reason}.`
+    }
+
+    async function initBackend() {
+      backendDetection = await backend.detectBackends(OLLAMA_SERVER_URL)
+      renderBackendOptions()
+      const settings = backend.loadSettings()
+      const tier = backend.pickTier(backendDetection, settings)
+      if (!tier) {
+        statusEl.className = 'error'
+        statusEl.textContent = 'No backend available yet — enter an API key below (Groq or OpenRouter) to continue.'
+        applyTierUi('byok')
+        backendTierSelect.value = 'byok'
+        return
+      }
+      await setActiveTier(tier)
+    }
+
+    backendTierSelect.addEventListener('change', () => setActiveTier(backendTierSelect.value))
+    byokProviderSelect.addEventListener('change', () => {
+      byokModelInput.placeholder = backend.BYOK_PROVIDERS[byokProviderSelect.value]?.defaultModel || ''
+    })
+    byokProviderSelect.dispatchEvent(new Event('change'))
+    byokSaveBtn.addEventListener('click', () => {
+      const settings = backend.loadSettings()
+      settings.byok = {
+        provider: byokProviderSelect.value,
+        apiKey: byokKeyInput.value.trim(),
+        model: byokModelInput.value.trim(),
+      }
+      backend.saveSettings(settings)
+      setActiveTier('byok')
+    })
+
     mcpReady = discoverAndCompile()
     mcpReady.catch(() => {})
-    loadModels()
+    initBackend()
 
     // Speech input — built into Chrome, no dependency. Degrades to
     // text-only silently if unsupported.
@@ -513,15 +652,19 @@ Output: rats behind the dumpster on Oak St`
       })
     }
 
+    // Every backend-facing call goes through backend.chat(activeTier, ...) —
+    // this is the only place index.html knows which tier is active. The
+    // model identifier and any per-tier extras (ollamaUrl, byok settings)
+    // come from currentBackendArgs(), defined with the backend UI below.
     async function compiledExtraction(rawText, model, metrics) {
-      const response = await chatOllama(OLLAMA_SERVER_URL, {
+      const response = await backend.chat(activeTier, {
+        ...currentBackendArgs(),
         model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `Input: ${rawText}` },
         ],
-        options: { num_predict: 40 },
-        keepAlive: '10m',
+        maxTokens: 40,
       })
       recordModelStats(metrics, response)
       return parseExtraction(response.content || response.thinking, rawText)
@@ -535,12 +678,12 @@ Output: rats behind the dumpster on Oak St`
       ]
       let nativeFailure = 'native tool call was absent'
       try {
-        const response = await chatOllama(OLLAMA_SERVER_URL, {
+        const response = await backend.chat(activeTier, {
+          ...currentBackendArgs(),
           model,
           messages,
-          tools: ollamaTools(availableTools),
-          options: { num_predict: 80 },
-          keepAlive: '10m',
+          tools: availableTools,
+          maxTokens: 80,
         })
         recordModelStats(metrics, response)
         const decision = toolCallDecision(response)
@@ -567,18 +710,36 @@ Output: rats behind the dumpster on Oak St`
       }
 
       metrics.record({ type: 'model_repair', reason: nativeFailure })
-      const repaired = await chatOllama(OLLAMA_SERVER_URL, {
+      // Schema-constrained repair (format:) is an Ollama-only feature.
+      // Other tiers get one plain-text repair retry instead — still a real,
+      // measured attempt, just without constrained decoding.
+      if (activeTier === 'ollama') {
+        const repaired = await backend.chat(activeTier, {
+          ...currentBackendArgs(),
+          model,
+          messages: [
+            { role: 'system', content: 'Choose one MCP tool and its arguments. Return only the JSON object required by the response schema.' },
+            { role: 'user', content: prompt },
+          ],
+          format: directDecisionFormat(availableTools),
+          maxTokens: 100,
+        })
+        recordModelStats(metrics, repaired)
+        return JSON.stringify(structuredDirectDecision(repaired, availableTools))
+      }
+      const repaired = await backend.chat(activeTier, {
+        ...currentBackendArgs(),
         model,
         messages: [
-          { role: 'system', content: 'Choose one MCP tool and its arguments. Return only the JSON object required by the response schema.' },
+          { role: 'system', content: 'Choose exactly one available tool. Reply with only three lines labeled TOOL, CATEGORY, and LOCATION.' },
           { role: 'user', content: prompt },
         ],
-        format: directDecisionFormat(availableTools),
-        options: { num_predict: 100 },
-        keepAlive: '10m',
+        maxTokens: 100,
       })
       recordModelStats(metrics, repaired)
-      return JSON.stringify(structuredDirectDecision(repaired, availableTools))
+      const text = repaired.content || repaired.thinking
+      parseDirectDecision(text, availableTools) // throws if still unusable — a real, measured failure
+      return text
     }
 
     function renderCallTrace(events) {
@@ -591,7 +752,7 @@ Output: rats behind the dumpster on Oak St`
     function renderRunMetrics(run) {
       const fields = [
         ['Experiment arm', strategyName(run.strategy)],
-        ['Ollama model', run.model],
+        ['Model', run.model],
         ['Status', run.status],
         ['Total', `${run.durationMs} ms`],
         ['Model work', `${run.modelDurationMs} ms`],
@@ -673,7 +834,7 @@ Output: rats behind the dumpster on Oak St`
       const rows = model ? loadRuns().filter((run) => run.model === model).slice(0, 8) : []
       document.getElementById('runHistory').innerHTML = rows.length
         ? rows.map((run) => `<tr><td>${strategyName(run.strategy)}</td><td class="${run.status === 'passed' ? 'passed' : ''}">${run.status}</td><td>${run.categoryCorrect === true ? '✓' : run.categoryCorrect === false ? '✗' : '—'}</td><td>${run.durationMs}ms</td><td>${run.modelDurationMs}ms</td><td>${run.promptTokens || 0}/${run.outputTokens || 0}</td><td>${run.modelCalls}</td><td>${run.mcpCalls}</td></tr>`).join('')
-        : `<tr><td colspan="8">${model ? `No measured runs for ${model} yet.` : 'Select an Ollama model to compare runs.'}</td></tr>`
+        : `<tr><td colspan="8">${model ? `No measured runs for ${model} yet.` : 'Select a backend to compare runs.'}</td></tr>`
       renderComparison(rows)
     }
 
@@ -739,7 +900,7 @@ Output: rats behind the dumpster on Oak St`
             { complaint: text },
             (event) => metrics.record(event)
           )
-          document.getElementById('stepLabel').textContent = `1. Purpose-compiled extraction — ${runModel} (local Ollama)`
+          document.getElementById('stepLabel').textContent = `1. Purpose-compiled extraction — ${runModel} (${BACKEND_LABELS[activeTier]})`
           document.getElementById('extracted').textContent = JSON.stringify(execution.state.extract, null, 2)
         } else {
           execution = await runDirectAgent({
@@ -755,7 +916,7 @@ Output: rats behind the dumpster on Oak St`
               }
             },
           })
-          document.getElementById('stepLabel').textContent = `1. Direct agent decisions — ${runModel} (local Ollama, raw tools/list)`
+          document.getElementById('stepLabel').textContent = `1. Direct agent decisions — ${runModel} (${BACKEND_LABELS[activeTier]}, raw tools/list)`
           document.getElementById('extracted').textContent = JSON.stringify(execution.decisions, null, 2)
         }
 

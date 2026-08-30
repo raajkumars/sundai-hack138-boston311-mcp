@@ -2,15 +2,54 @@
 
 Sundai Hack 138: **Small Models, Big Applications**.
 
-This project compares how the same local Ollama model performs on a real
-MCP-backed task with and without purpose-compiled orchestration. The model is
-selected in the UI from the models installed in the visitor's local Ollama
-instance.
+This project compares how the same model performs on a real MCP-backed task
+with and without purpose-compiled orchestration. Two axes are independent:
+**how** orchestration is structured (purpose-compiled vs. direct agent, see
+below) and **where** inference runs (see "Backend cascade"). Changing the
+backend never changes the orchestration code — both strategies call through
+one `backend.chat(tier, ...)` interface.
 
 The application is read-only. It never files Boston 311 requests. A hosted PWA
-shell is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>, but
-inference still requires Ollama on the visitor's machine and permission for the
-page origin to access it. Running the PWA locally is the simplest demo setup.
+shell is available at <https://sundai-hack138-2-gw.route.qwickforge.com/> and
+works with no setup via in-browser WebGPU; local Ollama and a bring-your-own
+API key are optional additional backends.
+
+## Backend cascade
+
+The app tries backends in this order and lets you override the pick:
+
+1. **In-browser WebGPU** — transformers.js + a vendored 180MB model
+   (SmolLM2-135M-Instruct-ONNX). No setup, no network calls after the
+   one-time model download, works on the hosted PWA out of the box.
+2. **Local Ollama** — detected via `GET /api/tags`; if reachable with at
+   least one model installed, offered as an alternative. This is Ted's
+   original build for this project — useful when WebGPU isn't available
+   (older browser, some Linux/driver combinations) or when comparing a
+   larger, more capable local model.
+3. **Your own API key (Groq or OpenRouter)** — entered in the UI, stored
+   only in your browser's localStorage, sent only to the provider you
+   chose. Never touches our infrastructure, never appears in the run
+   metrics also stored in localStorage. Not auto-selected; you opt in.
+
+There is deliberately no fourth "our hosted LLM" tier: a public static page
+cannot hold a server credential without exposing it to everyone who loads
+the page, so that tier was dropped rather than shipped with a
+credential-exposure hole.
+
+Every detection result records **why** a tier was or wasn't available (see
+`detectWebgpu`/`detectOllama` in `backend-selector.js`), shown in the
+"Inference backend" note in the UI — capability detection failing silently
+between machines (this app worked on an 8GB MacBook Air and failed on a
+strictly-better 12GB Lenovo Legion over WebGPU) is the actual problem this
+exists to diagnose, not just work around.
+
+**Known timing note:** the Direct-agent arm (raw `tools/list`, no
+orchestration help) can take several minutes to *fail* on the WebGPU tier
+with the small vendored model — it genuinely cannot produce a valid tool
+call, and the app correctly measures that as a failure after exhausting its
+retry/repair attempts. That's the intended comparison (Arm A struggling
+while Arm B succeeds), but it's slow enough to be worth knowing about
+before demoing that specific combination live.
 
 ## Live URLs
 
@@ -84,22 +123,32 @@ The generic compiler is [`purpose-compiler.js`](purpose-compiler.js).
 
 - Node.js 18 or newer
 - Python 3 (used only as a no-build static file server)
-- A running local [Ollama](https://ollama.com/) service
-- At least one model installed in Ollama
-- A browser allowed to access `http://127.0.0.1:11434`
+- Nothing else, for the default WebGPU backend — a WebGPU-capable browser
+  (recent Chrome) is all that's needed.
+
+Optional, for the other two backends:
+- [Ollama](https://ollama.com/) running locally, with at least one model
+  installed, and a browser allowed to access `http://127.0.0.1:11434`
+- An API key from [Groq](https://console.groq.com/) or
+  [OpenRouter](https://openrouter.ai/) (entered in the app UI, not a file)
 
 ## First-time setup
 
-Install or choose at least one local model. For example:
+Nothing required for WebGPU — the app detects it and loads the vendored
+model automatically (see "Regenerating vendored assets" if `models/` is
+missing after a fresh clone).
+
+To use Ollama instead, install or choose at least one local model:
 
 ```bash
 ollama pull llama3.1:8b
 ```
 
 The app defaults to `llama3.1:8b` when it is installed; otherwise it selects the
-first model returned by Ollama. The dropdown exposes every model returned by
-`GET /api/tags`. On selection, the app preloads that model and keeps it resident
-for ten minutes so the first experiment arm does not pay a cold-load penalty.
+first model returned by Ollama. The dropdown (shown only when the Ollama tier
+is selected) exposes every model returned by `GET /api/tags`. On selection,
+the app preloads that model and keeps it resident for ten minutes so the
+first experiment arm does not pay a cold-load penalty.
 
 ## Start locally
 
@@ -173,7 +222,8 @@ The tests cover:
 ```text
 index.html                         PWA and comparison interface
 mcp-client.js                      Minimal streamable-HTTP MCP client
-ollama-client.js                   Local model discovery and chat adapter
+backend-selector.js                Backend cascade: detection + unified chat()
+ollama-client.js                   Ollama tier: local model discovery and chat adapter
 purpose-compiler.js                Generic client-side compiler/executor
 direct-agent.js                    Raw tools/list comparison baseline
 civic-normalizer.js                Testable Boston-specific normalization
