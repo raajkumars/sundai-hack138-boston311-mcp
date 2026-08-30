@@ -105,6 +105,12 @@
       font-size: clamp(11px, 1.1vw, 14px);
       letter-spacing: .03em;
     }
+    .credits {
+      color: var(--muted);
+      font-size: clamp(13px, 1.25vw, 16px);
+      letter-spacing: .02em;
+    }
+    .credits strong { color: var(--text); }
 
     .chips { display: flex; flex-wrap: wrap; gap: 10px; }
     .chip {
@@ -412,6 +418,7 @@
           <span class="chip">Unchanged MCP server</span>
           <span class="chip">Controlled A/B test</span>
         </div>
+        <p class="credits">Developed by <strong>Ted Schwartz</strong> and <strong>Raaj Subramaniam</strong></p>
         <p class="footer-line">Open-source reference application · editable client policy · read-only civic data</p>
       </div>
     </section>

@@ -9,6 +9,8 @@ introduction plus a live demonstration.
 Direct MCP tool use versus purpose-compiled orchestration for the same small
 local model.
 
+Developed by Ted Schwartz and Raaj Subramaniam.
+
 - Local inference via Ollama
 - Live Boston 311 data
 - Unchanged MCP server
