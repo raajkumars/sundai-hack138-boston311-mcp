@@ -72,12 +72,15 @@ export async function runDirectAgent({ complaint, tools, generate, callTool, max
   let mcpCalls = 0
 
   for (let step = 0; step < maxSteps; step += 1) {
-    const prompt = buildDirectAgentPrompt(tools, complaint, observation)
+    const usedTools = new Set(decisions.map((decision) => decision.name))
+    const availableTools = tools.filter((tool) => tool.name === 'query_recent' || !usedTools.has(tool.name))
+    if (!availableTools.length) throw new Error('Direct agent exhausted the available MCP tools')
+    const prompt = buildDirectAgentPrompt(availableTools, complaint, observation)
     const modelStarted = performance.now()
-    const reply = await generate(prompt)
+    const reply = await generate(prompt, { step, tools: availableTools, previousDecisions: decisions, observation })
     modelCalls += 1
     onEvent({ type: 'direct_model_call', durationMs: performance.now() - modelStarted, reply })
-    const decision = parseDirectDecision(reply, tools)
+    const decision = parseDirectDecision(reply, availableTools)
     const selectedTool = tools.find((tool) => tool.name === decision.name)
     validateValue(decision.arguments, selectedTool.inputSchema, `Direct-agent ${decision.name} arguments`)
     decisions.push(decision)

@@ -5,7 +5,7 @@ import test from 'node:test'
 import { classifyCategory, locationOf } from '../civic-normalizer.js'
 import { compilePurposePack, executePlan, PurposeCompilerError } from '../purpose-compiler.js'
 import { buildDirectAgentPrompt, describeDirectFailure, parseDirectDecision, runDirectAgent } from '../direct-agent.js'
-import { chatOllama, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, toolCallDecision } from '../ollama-client.js'
+import { chatOllama, directDecisionFormat, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from '../ollama-client.js'
 
 const root = new URL('../', import.meta.url)
 const pack = JSON.parse(await readFile(new URL('purpose-packs/boston-311-related-reports.json', root)))
@@ -112,6 +112,25 @@ test('direct agent validates its selected arguments against tools/list', async (
   )
 })
 
+test('direct agent removes a used non-terminal tool from the next decision', async () => {
+  const availableByStep = []
+  const execution = await runDirectAgent({
+    complaint: 'blocked lane',
+    tools,
+    generate: async (_prompt, context) => {
+      availableByStep.push(context.tools.map((tool) => tool.name))
+      return context.step === 0
+        ? '{"tool":"lookup_service","arguments":{"category":"Illegal Parking"}}'
+        : '{"tool":"query_recent","arguments":{"category":"Illegal Parking"}}'
+    },
+    callTool: async (name) => name === 'lookup_service'
+      ? { service_name: 'Illegal Parking' }
+      : { matched: { service_name: 'Illegal Parking' }, results: [] },
+  })
+  assert.deepEqual(availableByStep, [['lookup_service', 'query_recent'], ['query_recent']])
+  assert.equal(execution.decisions[1].name, 'query_recent')
+})
+
 test('deterministic civic routing passes the benchmark fixtures', async () => {
   const fixtures = JSON.parse(await readFile(new URL('tests/fixtures/civic-issues.json', root)))
   for (const fixture of fixtures) {
@@ -170,5 +189,18 @@ test('sends non-streaming Ollama chat requests and exposes inference metrics', a
   assert.deepEqual(
     { totalDurationMs: response.totalDurationMs, loadDurationMs: response.loadDurationMs, promptTokens: response.promptTokens, outputTokens: response.outputTokens },
     { totalDurationMs: 25, loadDurationMs: 5, promptTokens: 42, outputTokens: 7 }
+  )
+})
+
+test('constrains and normalizes a repaired direct Ollama decision', () => {
+  const format = directDecisionFormat(tools)
+  assert.deepEqual(format.properties.tool.enum, ['lookup_service', 'query_recent'])
+  assert.deepEqual(
+    structuredDirectDecision({ content: '{"tool":"query_recent","arguments":{"category":"Illegal Parking","location":"Main St"}}' }, tools),
+    { tool: 'query_recent', arguments: { category: 'Illegal Parking', location: 'Main St' } }
+  )
+  assert.deepEqual(
+    structuredDirectDecision({ content: '{"tool":"lookup_service","arguments":{"category":"Illegal Parking","location":"Main St"}}' }, tools),
+    { tool: 'lookup_service', arguments: { category: 'Illegal Parking' } }
   )
 })

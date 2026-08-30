@@ -106,6 +106,42 @@ export function ollamaTools(mcpTools) {
   }))
 }
 
+export function directDecisionFormat(mcpTools) {
+  return {
+    type: 'object',
+    properties: {
+      tool: { type: 'string', enum: mcpTools.map((tool) => tool.name) },
+      arguments: {
+        type: 'object',
+        properties: {
+          category: { type: 'string' },
+          location: { type: 'string' },
+        },
+        required: ['category'],
+        additionalProperties: false,
+      },
+    },
+    required: ['tool', 'arguments'],
+    additionalProperties: false,
+  }
+}
+
+export function structuredDirectDecision(response, mcpTools) {
+  let parsed
+  try { parsed = JSON.parse(response?.content || '') }
+  catch (_) { throw new OllamaClientError('Ollama structured direct decision was not valid JSON') }
+
+  const available = new Set(mcpTools.map((tool) => tool.name))
+  if (!available.has(parsed.tool)) throw new OllamaClientError(`Ollama selected an unavailable tool: ${parsed.tool || '(missing)'}`)
+  const category = parsed.arguments?.category?.trim()
+  if (!category) throw new OllamaClientError('Ollama structured direct decision omitted category')
+
+  const args = { category }
+  const location = parsed.arguments?.location?.trim()
+  if (parsed.tool === 'query_recent' && location && !/^none$/i.test(location)) args.location = location
+  return { tool: parsed.tool, arguments: args }
+}
+
 export function toolCallDecision(response) {
   const fn = response?.toolCalls?.[0]?.function
   if (!fn?.name) return null

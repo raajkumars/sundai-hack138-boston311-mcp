@@ -302,10 +302,10 @@
   <script type="module">
     import { mcpCallTool, mcpInitialize, mcpListTools } from './mcp-client.js'
     import { compilePurposePack, executePlan, loadPurposePack } from './purpose-compiler.js'
-    import { describeDirectFailure, runDirectAgent } from './direct-agent.js'
+    import { describeDirectFailure, parseDirectDecision, runDirectAgent } from './direct-agent.js'
     import { createRunMetrics, loadRuns } from './run-metrics.js'
     import { classifyCategory, parseExtraction } from './civic-normalizer.js'
-    import { DEFAULT_OLLAMA_URL, chatOllama, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, toolCallDecision } from './ollama-client.js'
+    import { DEFAULT_OLLAMA_URL, chatOllama, directDecisionFormat, listOllamaModels, ollamaModelLabel, ollamaTools, preloadOllamaModel, structuredDirectDecision, toolCallDecision } from './ollama-client.js'
 
     // The public read-only MCP deployment is the default. Deployments can
     // still inject window.MCP_SERVER_URL before this module executes.
@@ -527,20 +527,58 @@ Output: rats behind the dumpster on Oak St`
       return parseExtraction(response.content || response.thinking, rawText)
     }
 
-    async function directGeneration(prompt, model, metrics) {
-      const response = await chatOllama(OLLAMA_SERVER_URL, {
+    async function directGeneration(prompt, model, metrics, context = {}) {
+      const availableTools = context.tools?.length ? context.tools : mcpTools
+      const messages = [
+        { role: 'system', content: 'Use exactly one provided MCP tool to satisfy the request. Derive arguments only from the current complaint. Do not answer with an example.' },
+        { role: 'user', content: prompt },
+      ]
+      let nativeFailure = 'native tool call was absent'
+      try {
+        const response = await chatOllama(OLLAMA_SERVER_URL, {
+          model,
+          messages,
+          tools: ollamaTools(availableTools),
+          options: { num_predict: 80 },
+          keepAlive: '10m',
+        })
+        recordModelStats(metrics, response)
+        const decision = toolCallDecision(response)
+        if (decision) {
+          const decisionText = JSON.stringify(decision)
+          try {
+            parseDirectDecision(decisionText, availableTools)
+            return decisionText
+          } catch (error) {
+            nativeFailure = error.message
+          }
+        }
+        const text = response.content || response.thinking
+        if (text) {
+          try {
+            parseDirectDecision(text, availableTools)
+            return text
+          } catch (error) {
+            nativeFailure = error.message
+          }
+        }
+      } catch (error) {
+        nativeFailure = error.message
+      }
+
+      metrics.record({ type: 'model_repair', reason: nativeFailure })
+      const repaired = await chatOllama(OLLAMA_SERVER_URL, {
         model,
         messages: [
-          { role: 'system', content: 'Use exactly one provided MCP tool to satisfy the request. Derive arguments only from the current complaint. Do not answer with an example.' },
+          { role: 'system', content: 'Choose one MCP tool and its arguments. Return only the JSON object required by the response schema.' },
           { role: 'user', content: prompt },
         ],
-        tools: ollamaTools(mcpTools),
-        options: { num_predict: 80 },
+        format: directDecisionFormat(availableTools),
+        options: { num_predict: 100 },
         keepAlive: '10m',
       })
-      recordModelStats(metrics, response)
-      const decision = toolCallDecision(response)
-      return decision ? JSON.stringify(decision) : response.content || response.thinking
+      recordModelStats(metrics, repaired)
+      return JSON.stringify(structuredDirectDecision(repaired, availableTools))
     }
 
     function renderCallTrace(events) {
@@ -558,6 +596,7 @@ Output: rats behind the dumpster on Oak St`
         ['Total', `${run.durationMs} ms`],
         ['Model work', `${run.modelDurationMs} ms`],
         ['Model calls', run.modelCalls],
+        ['Repair calls', run.repairCalls || 0],
         ['MCP calls', run.mcpCalls],
         ['Prompt tokens', run.promptTokens || 0],
         ['Output tokens', run.outputTokens || 0],
@@ -595,6 +634,7 @@ Output: rats behind the dumpster on Oak St`
           <div class="outcome-stat"><span>Model work</span><strong>${Number(run.modelDurationMs) || 0} ms</strong></div>
           <div class="outcome-stat"><span>Tokens in/out</span><strong>${Number(run.promptTokens) || 0} / ${Number(run.outputTokens) || 0}</strong></div>
           <div class="outcome-stat"><span>Model calls</span><strong>${Number(run.modelCalls) || 0}</strong></div>
+          <div class="outcome-stat"><span>Repairs</span><strong>${Number(run.repairCalls) || 0}</strong></div>
           <div class="outcome-stat"><span>MCP calls</span><strong>${Number(run.mcpCalls) || 0}</strong></div>
         </div>`
     }
@@ -705,7 +745,7 @@ Output: rats behind the dumpster on Oak St`
           execution = await runDirectAgent({
             complaint: text,
             tools: mcpTools,
-            generate: (prompt) => directGeneration(prompt, runModel, metrics),
+            generate: (prompt, context) => directGeneration(prompt, runModel, metrics, context),
             callTool: (name, args) => mcpCallTool(MCP_SERVER_URL, name, args),
             maxSteps: 2,
             onEvent: (event) => {
@@ -753,7 +793,7 @@ Output: rats behind the dumpster on Oak St`
             heading.textContent = 'Arm A measured outcome: failed'
             const explanation = document.createElement('div')
             explanation.className = 'addr'
-            explanation.textContent = `${runModel} produced an ${failure}. This is a baseline result, not an MCP server error.`
+            explanation.textContent = `${runModel} produced ${failure}. This is a baseline result, not an MCP server error.`
             const detail = document.createElement('div')
             detail.className = 'meta'
             detail.textContent = err.message

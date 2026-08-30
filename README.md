@@ -43,7 +43,11 @@ Two strategies are available in the UI:
    handling.
 2. **Direct MCP agent** — the same selected model receives raw `tools/list`
    descriptions and chooses tool calls itself. Ollama-native tool calls are used
-   when the model supplies them; text output parsing is the fallback. This is the
+   when the model supplies them. Text output parsing is the first fallback; if
+   that is still unusable, the same model retries against a JSON schema whose
+   tool enum comes from `tools/list`. Used non-terminal tools are removed from
+   the following decision to prevent loops. Tool and argument choices remain
+   model outputs, and repair calls are included in the metrics. This is the
    comparison baseline.
 
 Every run records wall time, model time, model calls, MCP calls, status, and

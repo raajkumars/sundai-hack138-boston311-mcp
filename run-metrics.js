@@ -9,15 +9,17 @@ export function createRunMetrics(strategy, model) {
     events,
     record(event) { events.push({ atMs: performance.now() - started, ...event }) },
     finish(extra = {}) {
+      const recordedModelCalls = events.filter((event) => event.type === 'model_stats').length
       const completed = {
         id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
         timestamp: new Date().toISOString(),
         strategy,
         model,
         durationMs: Math.round(performance.now() - started),
-        modelCalls: events.filter((event) => event.type === 'step_started' && event.executor === 'model').length
+        modelCalls: recordedModelCalls || events.filter((event) => event.type === 'step_started' && event.executor === 'model').length
           + events.filter((event) => event.type === 'direct_model_call').length,
         mcpCalls: events.filter((event) => event.type === 'mcp_call').length,
+        repairCalls: events.filter((event) => event.type === 'model_repair').length,
         modelDurationMs: Math.round(events
           .filter((event) => (event.type === 'step_completed' && event.executor === 'model') || event.type === 'direct_model_call')
           .reduce((total, event) => total + (event.durationMs || 0), 0)),
