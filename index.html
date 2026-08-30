@@ -218,8 +218,9 @@
     env.localModelPath = './models/'
     env.backends.onnx.wasm.wasmPaths = new URL('./vendor/', window.location.href).href
 
-    // Swap this to the deployed MCP server URL once devops-lead hosts it.
-    const MCP_SERVER_URL = window.MCP_SERVER_URL || 'http://localhost:8311/mcp'
+    // The public read-only MCP deployment is the default. Deployments can
+    // still inject window.MCP_SERVER_URL before this module executes.
+    const MCP_SERVER_URL = window.MCP_SERVER_URL || 'https://boston311-mcp-gw.route.qwickforge.com/mcp'
 
     // SmolLM2-135M, not Qwen2.5-0.5B: same model project 1 landed on after a
     // real cold-load reliability problem through this same gateway

@@ -7,7 +7,8 @@ real MCP-backed task more reliably when the application's purpose is compiled
 into a constrained workflow instead of asking the model to reason about the
 protocol and choose every tool itself.
 
-The application is read-only. It never files Boston 311 requests.
+The application is read-only. It never files Boston 311 requests. A hosted PWA
+is available at <https://sundai-hack138-2-gw.route.qwickforge.com/>.
 
 ## What it demonstrates
 
@@ -85,21 +86,14 @@ these assets are installed.
 
 ## Start locally
 
-Terminal 1 — existing MCP server:
+The PWA uses the public read-only MCP endpoint by default; no local MCP server
+is required:
 
-```bash
-cd /workspace/boston-311-hack/mcp-server
-npm install
-npm start
+```text
+https://boston311-mcp-gw.route.qwickforge.com/mcp
 ```
 
-The server listens on port `8311` by default. Verify it with:
-
-```bash
-curl http://localhost:8311/health
-```
-
-Terminal 2 — static PWA:
+Start only the static PWA:
 
 ```bash
 cd /workspace/boston-311-hack
@@ -114,8 +108,9 @@ The app probes for a usable WebGPU adapter before creating the model pipeline
 and selects local WASM inference when no adapter is available. To force the
 portable path, open <http://localhost:8899/?backend=wasm>.
 
-The PWA defaults to `http://localhost:8311/mcp`. A deployment can set
-`window.MCP_SERVER_URL` before the module script executes.
+The public deployment permits browser CORS and supports MCP protocol version
+`2025-06-18`. A different deployment can still set `window.MCP_SERVER_URL`
+before the module script executes.
 
 ## Compare the strategies
 
